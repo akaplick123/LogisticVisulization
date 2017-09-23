@@ -6,6 +6,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 
+import javax.annotation.PostConstruct;
 import javax.swing.JDesktopPane;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
@@ -13,12 +14,16 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.KeyStroke;
 
+import org.springframework.stereotype.Component;
+
+@Component
 public class MainFrame extends JFrame implements ActionListener {
     private static final long serialVersionUID = 1L;
     private JDesktopPane desktop;
 
-    public MainFrame() {
-	super("InternalFrameDemo");
+    @PostConstruct
+    public void init() {
+	setTitle("InternalFrameDemo");
 
 	// Make the big window be indented 50 pixels from each edge
 	// of the screen.
@@ -95,24 +100,20 @@ public class MainFrame extends JFrame implements ActionListener {
      * Create the GUI and show it. For thread safety, this method should be
      * invoked from the event-dispatching thread.
      */
-    private static void createAndShowGUI() {
-	// Make sure we have nice window decorations.
-	JFrame.setDefaultLookAndFeelDecorated(true);
-
-	// Create and set up the window.
-	MainFrame frame = new MainFrame();
-	frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-	// Display the window.
-	frame.setVisible(true);
-    }
-
-    public static void main(String[] args) {
+    public void createAndShowGUI() {
 	// Schedule a job for the event-dispatching thread:
 	// creating and showing this application's GUI.
 	javax.swing.SwingUtilities.invokeLater(new Runnable() {
 	    public void run() {
-		createAndShowGUI();
+		// Make sure we have nice window decorations.
+		JFrame.setDefaultLookAndFeelDecorated(true);
+
+		// Create and set up the window.
+		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+		// Display the window.
+		setAutoRequestFocus(true);
+		setVisible(true);
 	    }
 	});
     }
