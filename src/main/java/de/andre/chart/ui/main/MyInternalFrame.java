@@ -1,8 +1,17 @@
 package de.andre.chart.ui.main;
 
 import java.awt.BorderLayout;
+import java.awt.FlowLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
+import javax.swing.JButton;
 import javax.swing.JInternalFrame;
+import javax.swing.JPanel;
+import javax.swing.event.InternalFrameAdapter;
+import javax.swing.event.InternalFrameEvent;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
@@ -27,6 +36,12 @@ public class MyInternalFrame extends JInternalFrame {
     private static final int xOffset = 30, yOffset = 30;
     private static int openFrameCount = 0;
 
+    private TimingThread worker = null;
+    private TimeTableXYDataset dataset = new TimeTableXYDataset();
+    private Minute currentMinute = null;
+    private int value1 = 0;
+    private int value2 = 0;
+
     public MyInternalFrame() {
 	super("Document #" + (++openFrameCount), true, // resizable
 		true, // closable
@@ -36,32 +51,140 @@ public class MyInternalFrame extends JInternalFrame {
 	// ...Create the GUI and put it in the window...
 	ChartPanel panel = createChartPanel();
 	setLayout(new BorderLayout());
-	add(panel);
+	add(panel, BorderLayout.CENTER);
+
+	JPanel pThreadController = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
+	JButton bStop = new JButton("stop");
+	bStop.setEnabled(false);
+	JButton bPause = new JButton("pause");
+	bPause.setEnabled(false);
+	JButton bPlay = new JButton("start");
+	JButton bSlower = new JButton("slower");
+	bSlower.setEnabled(false);
+	JButton bFaster = new JButton("faster");
+	bFaster.setEnabled(bSlower.isEnabled());
+	
+	pThreadController.add(bStop);
+	pThreadController.add(bPause);
+	pThreadController.add(bPlay);
+	pThreadController.add(bSlower);
+	pThreadController.add(bFaster);
+	add(pThreadController, BorderLayout.SOUTH);
 
 	// ...Then set the window size or call pack...
-	setSize(300, 300);
+	setSize(500, 300);
 
 	// Set the window's location.
 	setLocation(xOffset * openFrameCount, yOffset * openFrameCount);
+
+	bStop.addActionListener(new ActionListener() {
+	    @Override
+	    public void actionPerformed(ActionEvent e) {
+		if (worker != null) {
+		    worker.interrupt();
+		    worker = null;
+		}
+		bStop.setEnabled(false);
+		bPause.setEnabled(false);
+		bPause.setText("pause");
+		bPlay.setEnabled(true);
+		bPlay.setText("restart");
+		bSlower.setEnabled(false);
+		bFaster.setEnabled(bSlower.isEnabled());
+	    }
+	});
+
+	bPause.addActionListener(new ActionListener() {
+	    @Override
+	    public void actionPerformed(ActionEvent e) {
+		if (worker != null && worker.isPaused()) {
+		    worker.doUnpause();
+		    bPause.setText("pause");
+		} else if (worker != null) {
+		    worker.doPause();
+		    bPause.setText("unpause");
+		}
+	    }
+	});
+
+	bPlay.addActionListener(new ActionListener() {
+	    @Override
+	    public void actionPerformed(ActionEvent e) {
+		bStop.setEnabled(true);
+		bPause.setEnabled(true);
+		bPause.setText("pause");
+		bPlay.setEnabled(false);
+		bSlower.setEnabled(true);
+		bFaster.setEnabled(bSlower.isEnabled());
+
+		if (worker != null && worker.isAlive()) {
+		    worker.interrupt();
+		    worker = null;
+		}
+		// reset dataset and time
+		initializeDataset();
+
+		// create one
+		worker = new TimingThread();
+		worker.start();
+	    }
+	});
+	
+	bSlower.addActionListener(new ActionListener() {
+	    @Override
+	    public void actionPerformed(ActionEvent e) {
+		if (worker != null) {
+		    worker.decreaseSpeed();
+		}
+	    }
+	});
+
+	bFaster.addActionListener(new ActionListener() {
+	    @Override
+	    public void actionPerformed(ActionEvent e) {
+		if (worker != null) {
+		    worker.increaseSpeed();
+		}
+	    }
+	});
+
+	addInternalFrameListener(new InternalFrameAdapter() {
+	    @Override
+	    public void internalFrameClosing(InternalFrameEvent e) {
+		bStop.doClick();
+		dataset.clear();
+	    }
+	});
     }
 
     protected ChartPanel createChartPanel() {
-//	TimeSeriesCollection dataset = new TimeSeriesCollection();
-//	TimeSeries series1 = new TimeSeries("Cat 1");
-//	series1.add(new Minute(10, 14, 13, 10, 2017), 10);
-//	series1.add(new Minute(12, 14, 13, 10, 2017), 15);
-//	series1.add(new Minute(13, 14, 13, 10, 2017), 20);
-//	series1.add(new Minute(20, 14, 13, 10, 2017), 7);
-//	dataset.addSeries(series1);
-//
-//	TimeSeries series2 = new TimeSeries("Cat 2");
-//	series2.add(new Minute(10, 14, 13, 10, 2017), 5);
-//	series2.add(new Minute(12, 14, 13, 10, 2017), 10);
-//	series2.add(new Minute(13, 14, 13, 10, 2017), 10);
-//	series2.add(new Minute(20, 14, 13, 10, 2017), 24);
-//	dataset.addSeries(series2);
-	
-	TimeTableXYDataset dataset = new TimeTableXYDataset();
+	// TimeSeriesCollection dataset = new TimeSeriesCollection();
+	// TimeSeries series1 = new TimeSeries("Cat 1");
+	// series1.add(new Minute(10, 14, 13, 10, 2017), 10);
+	// series1.add(new Minute(12, 14, 13, 10, 2017), 15);
+	// series1.add(new Minute(13, 14, 13, 10, 2017), 20);
+	// series1.add(new Minute(20, 14, 13, 10, 2017), 7);
+	// dataset.addSeries(series1);
+	//
+	// TimeSeries series2 = new TimeSeries("Cat 2");
+	// series2.add(new Minute(10, 14, 13, 10, 2017), 5);
+	// series2.add(new Minute(12, 14, 13, 10, 2017), 10);
+	// series2.add(new Minute(13, 14, 13, 10, 2017), 10);
+	// series2.add(new Minute(20, 14, 13, 10, 2017), 24);
+	// dataset.addSeries(series2);
+
+	// TimeTableXYDataset dataset = new TimeTableXYDataset();
+	initializeDataset();
+
+	JFreeChart chart = createTimeSeriesChart("title", "time", "value", dataset);
+	ChartPanel panel = new ChartPanel(chart);
+	panel.setFillZoomRectangle(true);
+	panel.setMouseWheelEnabled(true);
+	return panel;
+    }
+
+    private void initializeDataset() {
+	dataset.clear();
 	dataset.add(new Minute(10, 14, 13, 10, 2017), 10, "Cat 1");
 	dataset.add(new Minute(12, 14, 13, 10, 2017), 15, "Cat 1");
 	dataset.add(new Minute(13, 14, 13, 10, 2017), 20, "Cat 1");
@@ -71,11 +194,9 @@ public class MyInternalFrame extends JInternalFrame {
 	dataset.add(new Minute(13, 14, 13, 10, 2017), 10, "Cat 2");
 	dataset.add(new Minute(20, 14, 13, 10, 2017), 24, "Cat 2");
 
-	JFreeChart chart = createTimeSeriesChart("title", "time", "value", dataset);
-	ChartPanel panel = new ChartPanel(chart);
-	panel.setFillZoomRectangle(true);
-	panel.setMouseWheelEnabled(true);
-	return panel;
+	currentMinute = new Minute(20, 14, 13, 10, 2017);
+	value1 = 20;
+	value2 = 24;
     }
 
     /**
@@ -153,6 +274,61 @@ public class MyInternalFrame extends JInternalFrame {
 	JFreeChart chart = new JFreeChart(title, JFreeChart.DEFAULT_TITLE_FONT, plot, legend);
 	ChartFactory.getChartTheme().apply(chart);
 	return chart;
+    }
 
+    private class TimingThread extends Thread {
+	private boolean paused = false;
+	private Random r = new Random();
+	private int milliSecondsWait = 500;
+
+	@Override
+	public void run() {
+	    try {
+		int millisWaited = 0;
+		while (true) {
+		    if (!isPaused() && millisWaited >= milliSecondsWait) {
+			currentMinute = (Minute) currentMinute.next();
+			value1 += r.nextInt(10) - 5;
+			value2 += Math.round(r.nextGaussian() * 5);		
+			dataset.add(currentMinute, value1, "Cat 1");
+			dataset.add(currentMinute, value2, "Cat 2");
+			millisWaited = 0;
+		    }
+
+		    // sleep 500ms
+		    TimeUnit.MILLISECONDS.sleep(100);
+		    millisWaited += 100;
+		}
+	    } catch (InterruptedException e) {
+		// exit loop
+	    }
+	}
+
+	public void doPause() {
+	    synchronized (this) {
+		this.paused = true;
+	    }
+	}
+
+	public void doUnpause() {
+	    synchronized (this) {
+		this.paused = false;
+	    }
+	}
+
+	public boolean isPaused() {
+	    synchronized (this) {
+		return paused;
+	    }
+	}
+	
+	public void increaseSpeed() {
+	    milliSecondsWait /= 1.3d;
+	    milliSecondsWait = Math.max(50, milliSecondsWait);
+	}
+	
+	public void decreaseSpeed() {
+	    milliSecondsWait *= 1.3d;
+	}
     }
 }
