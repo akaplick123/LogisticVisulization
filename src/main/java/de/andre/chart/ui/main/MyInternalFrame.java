@@ -8,7 +8,6 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 import javax.swing.JButton;
-import javax.swing.JInternalFrame;
 import javax.swing.JPanel;
 import javax.swing.event.InternalFrameAdapter;
 import javax.swing.event.InternalFrameEvent;
@@ -31,10 +30,10 @@ import org.jfree.data.time.Minute;
 import org.jfree.data.time.TimeTableXYDataset;
 import org.jfree.data.xy.XYDataset;
 
-public class MyInternalFrame extends JInternalFrame {
+import de.andre.chart.ui.chartframe.JInternalFrameBase;
+
+public class MyInternalFrame extends JInternalFrameBase {
     private static final long serialVersionUID = 1L;
-    private static final int xOffset = 30, yOffset = 30;
-    private static int openFrameCount = 0;
 
     private TimingThread worker = null;
     private TimeTableXYDataset dataset = new TimeTableXYDataset();
@@ -43,10 +42,7 @@ public class MyInternalFrame extends JInternalFrame {
     private int value2 = 0;
 
     public MyInternalFrame() {
-	super("Document #" + (++openFrameCount), true, // resizable
-		true, // closable
-		true, // maximizable
-		true);// iconifiable
+	super();
 
 	// ...Create the GUI and put it in the window...
 	ChartPanel panel = createChartPanel();
@@ -70,12 +66,6 @@ public class MyInternalFrame extends JInternalFrame {
 	pThreadController.add(bSlower);
 	pThreadController.add(bFaster);
 	add(pThreadController, BorderLayout.SOUTH);
-
-	// ...Then set the window size or call pack...
-	setSize(500, 300);
-
-	// Set the window's location.
-	setLocation(xOffset * openFrameCount, yOffset * openFrameCount);
 
 	bStop.addActionListener(new ActionListener() {
 	    @Override

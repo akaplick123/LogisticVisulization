@@ -17,4 +17,8 @@ public class OrderItems {
     public OrderItem getByCommkey(int commkey) {
 	return items.get(commkey);
     }
+
+    public void clear() {
+	items.clear();
+    }
 }

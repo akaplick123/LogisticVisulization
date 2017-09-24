@@ -18,6 +18,7 @@ public class ImportCSVFile {
 
     private int IDX_COMMKEY = -1;
     private int IDX_KNOWN_OD = -1;
+    private int IDX_QUANTITY = -1;
     private int IDX_TS_ORDER = -1;
     private int IDX_TS_PROCESSABLE = -1;
     private int IDX_TS_PROCESSED = -1;
@@ -36,6 +37,7 @@ public class ImportCSVFile {
 
 	    IDX_COMMKEY = isOneOf(IDX_COMMKEY, idx, part, "OD_COMMKEY");
 	    IDX_KNOWN_OD = isOneOf(IDX_KNOWN_OD, idx, part, "OD_KNOWN");
+	    IDX_QUANTITY = isOneOf(IDX_QUANTITY, idx, part, "QUANTITY");
 	    IDX_TS_ORDER = isOneOf(IDX_TS_ORDER, idx, part, "ORDER_DATE");
 	    IDX_TS_PROCESSABLE = isOneOf(IDX_TS_PROCESSABLE, idx, part, "TS_ABWICKELBAR");
 	    IDX_TS_PROCESSED = isOneOf(IDX_TS_PROCESSED, idx, part, "TS_FAKTURIERT");
@@ -60,8 +62,11 @@ public class ImportCSVFile {
 
 	int commkey = extractInt(-1, IDX_COMMKEY, parts);
 	if (commkey >= 0) {
-	    OrderItem item = new OrderItem().commkey(commkey);
+	    int quantity = extractInt(1, IDX_QUANTITY, parts);
+	    int odKnown = extractInt(0, IDX_KNOWN_OD, parts);
+	    OrderItem item = new OrderItem().commkey(commkey).quantity(quantity).fromNali(odKnown == 0);
 	    this.orderItems.add(item);
+
 	    extractAndAddEvent(IDX_TS_ORDER, OrderItemState.WAITING, commkey, parts);
 	    extractAndAddEvent(IDX_TS_PROCESSABLE, OrderItemState.PROCESSABLE, commkey, parts);
 	    extractAndAddEvent(IDX_TS_PROCESSED, OrderItemState.PROCESSED, commkey, parts);

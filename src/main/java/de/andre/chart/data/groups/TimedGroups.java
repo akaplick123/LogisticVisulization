@@ -2,6 +2,7 @@ package de.andre.chart.data.groups;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -21,13 +22,21 @@ public class TimedGroups<V> {
     }
 
     public void add(V value) {
-	LocalDateTime groupKey = grouper.getGroupOf(value);
+	LocalDateTime groupKey = groupOf(value);
 	List<V> group = groups.get(groupKey);
 	if (group == null) {
 	    group = new ArrayList<>();
 	    groups.put(groupKey, group);
 	}
 	group.add(value);
+    }
+    
+    private LocalDateTime groupOf(V value) {
+	return grouper.getGroupOf(value);
+    }
+
+    public void addAll(Collection<V> values) {
+	values.forEach(this::add);
     }
 
     public Stream<LocalDateTime> getAllKeys() {
@@ -49,5 +58,9 @@ public class TimedGroups<V> {
 	    return new ArrayList<V>().stream();
 	}
 	return group.stream();
+    }
+    
+    public void clear() {
+	groups.clear();
     }
 }

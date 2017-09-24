@@ -15,9 +15,12 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import de.andre.chart.ui.main.actions.CreateNewInternalFrameAction;
+import de.andre.chart.data.Datacenter;
+import de.andre.chart.ui.chartframe.OrdersByTimeChartFrame;
+import de.andre.chart.ui.main.actions.CreateInternalFrameAction;
 import de.andre.chart.ui.main.actions.LoadFileAction;
 import de.andre.chart.ui.main.actions.QuitAction;
 
@@ -25,6 +28,8 @@ import de.andre.chart.ui.main.actions.QuitAction;
 public class MainFrame extends JFrame {
     private static final long serialVersionUID = 1L;
     private JDesktopPane desktop;
+    @Autowired
+    private Datacenter datacenter;
 
     @PostConstruct
     public void init() {
@@ -51,7 +56,26 @@ public class MainFrame extends JFrame {
     private JMenuBar createMenuBar() {
 	JMenuBar menuBar = new JMenuBar();
 
-	// Set up the lone menu.
+	createDocumentMenu(menuBar);
+	createChartsMenu(menuBar);
+
+	return menuBar;
+    }
+
+    private void createChartsMenu(JMenuBar menuBar) {
+	JMenu menu = new JMenu("Charts");
+	menu.setMnemonic(KeyEvent.VK_C);
+	menuBar.add(menu);
+
+	JMenuItem menuItem = new JMenuItem("Orders by time");
+	menuItem.setMnemonic(KeyEvent.VK_T);
+	menuItem.addActionListener(
+		new CreateInternalFrameAction(desktop, () -> new OrdersByTimeChartFrame(datacenter)));
+	menu.add(menuItem);
+	menuBar.add(menu);
+    }
+
+    private void createDocumentMenu(JMenuBar menuBar) {
 	JMenu menu = new JMenu("Document");
 	menu.setMnemonic(KeyEvent.VK_D);
 	menuBar.add(menu);
@@ -59,14 +83,17 @@ public class MainFrame extends JFrame {
 	// Set up the first menu item.
 	JMenuItem menuItem = new JMenuItem("New");
 	menuItem.setMnemonic(KeyEvent.VK_N);
-	menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, ActionEvent.ALT_MASK));
-	menuItem.addActionListener(new CreateNewInternalFrameAction(desktop));
+	menuItem.addActionListener(new CreateInternalFrameAction(desktop, () -> new MyInternalFrame()));
 	menu.add(menuItem);
 
 	menuItem = new JMenuItem("Load");
 	menuItem.setMnemonic(KeyEvent.VK_L);
 	menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, ActionEvent.ALT_MASK));
 	menuItem.addActionListener(new LoadFileAction(desktop, this, thread -> {
+	    datacenter.clear();
+	    datacenter.getItems().addAll(thread.getImporter().getOrderItems());
+	    datacenter.getEvents().addAll(thread.getImporter().getOrderItemEvents());
+
 	    DecimalFormat df = new DecimalFormat("#,##0");
 	    int items = thread.getImporter().getNumberOfItems();
 	    int events = thread.getImporter().getNumberOfEvents();
@@ -75,14 +102,11 @@ public class MainFrame extends JFrame {
 	}));
 	menu.add(menuItem);
 
-	// Set up the second menu item.
 	menuItem = new JMenuItem("Quit");
 	menuItem.setMnemonic(KeyEvent.VK_Q);
 	menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, ActionEvent.ALT_MASK));
 	menuItem.addActionListener(new QuitAction());
 	menu.add(menuItem);
-
-	return menuBar;
     }
 
     /**
