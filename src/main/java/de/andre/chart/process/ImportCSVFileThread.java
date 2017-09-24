@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.LineNumberReader;
+import java.util.ArrayList;
+import java.util.Collection;
 
 import lombok.extern.log4j.Log4j;
 
@@ -20,28 +22,42 @@ public class ImportCSVFileThread extends Thread {
 	void started(ImportCSVFileThread thread);
     }
 
-    private final File csvFile;
+    private final Collection<File> csvFiles;
     private final ImportCSVFile importer = new ImportCSVFile();
     private Throwable caughtException;
     private ThreadStartedListener startedListener;
     private ThreadFinishedListener finishedListener;
 
-    public ImportCSVFileThread(File csvFile) {
+    public ImportCSVFileThread(Collection<File> csvFiles) {
 	super("import csv");
-	this.csvFile = csvFile;
+	this.csvFiles = new ArrayList<>(csvFiles);
     }
 
     @Override
     public void run() {
 	this.caughtException = null;
 
+	try {
+	    if (startedListener != null) {
+		startedListener.started(this);
+	    }
+	    for (File file: csvFiles) {
+		importFile(file);
+	    }
+	} catch (InterruptedException e) {
+	    // make nothing others then stop execution
+	} finally {
+	    if (finishedListener != null) {
+		finishedListener.finished(this);
+	    }
+	}
+    }
+
+    private void importFile(File csvFile) throws InterruptedException {
 	LineNumberReader lnr = null;
 	try {
 	    lnr = new LineNumberReader(new FileReader(csvFile));
 	    String line = null;
-	    if (startedListener != null) {
-		startedListener.started(this);
-	    }
 	    while ((line = lnr.readLine()) != null) {
 		if (lnr.getLineNumber() <= 1) {
 		    importer.parseHeader(line);
@@ -59,9 +75,6 @@ public class ImportCSVFileThread extends Thread {
 		} catch (IOException e) {
 		    log.warn("close file", e);
 		}
-	    }
-	    if (finishedListener != null) {
-		finishedListener.finished(this);
 	    }
 	}
     }

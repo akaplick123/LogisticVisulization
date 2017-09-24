@@ -8,8 +8,10 @@ import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import javax.swing.JButton;
 import javax.swing.JDesktopPane;
@@ -22,14 +24,19 @@ import javax.swing.JProgressBar;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
+import de.andre.chart.process.ImportCSVFileThread;
+import de.andre.chart.process.ImportCSVFileThread.ThreadFinishedListener;
+
 public class LoadFileAction implements ActionListener {
     private final JDesktopPane desktop;
     private final JFrame mainFrame;
     private File lastSelectedDirectory = null;
+    private final ThreadFinishedListener finishListener;
 
-    public LoadFileAction(JDesktopPane desktop, JFrame mainFrame) {
+    public LoadFileAction(JDesktopPane desktop, JFrame mainFrame, ThreadFinishedListener finishListener) {
 	this.desktop = desktop;
 	this.mainFrame = mainFrame;
+	this.finishListener = finishListener;
     }
 
     @Override
@@ -54,8 +61,9 @@ public class LoadFileAction implements ActionListener {
 
     private void loadFiles(List<File> files) {
 	files.forEach(System.out::println);
+	ImportCSVFileThread importThread = new ImportCSVFileThread(files);
 
-	JProgressDialog dialog = new JProgressDialog(mainFrame);
+	JProgressDialog dialog = new JProgressDialog(importThread);
 	dialog.pack();
 	dialog.setBounds(center(dialog, mainFrame));
 	dialog.setVisible(true);
@@ -72,10 +80,10 @@ public class LoadFileAction implements ActionListener {
 	return new Rectangle(x, y, widthDialog, heigthDialog);
     }
 
-    private static class JProgressDialog extends JDialog {
+    private class JProgressDialog extends JDialog {
 	private static final long serialVersionUID = 1L;
 
-	public JProgressDialog(JFrame mainFrame) {
+	public JProgressDialog(ImportCSVFileThread importThread) {
 	    super(mainFrame);
 	    setModal(true);
 	    setTitle("Progress...");
@@ -83,10 +91,12 @@ public class LoadFileAction implements ActionListener {
 
 	    Container contentPane = new JPanel();
 	    contentPane.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-	    contentPane.setLayout(new GridLayout(3, 1, 5, 5));
+	    contentPane.setLayout(new GridLayout(5, 1, 5, 5));
 	    JLabel lDesc = new JLabel("loading files...");
 	    JProgressBar progressBar = new JProgressBar();
 	    progressBar.setIndeterminate(true);
+	    JLabel lDecCntItems = new JLabel("Items loaded: 0");
+	    JLabel lDecCntEvents = new JLabel("Events loaded: 0");
 	    JButton bAbort = new JButton("abort");
 
 	    JPanel pProgressBar = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
@@ -96,10 +106,54 @@ public class LoadFileAction implements ActionListener {
 
 	    contentPane.add(lDesc);
 	    contentPane.add(pProgressBar);
+	    contentPane.add(lDecCntItems);
+	    contentPane.add(lDecCntEvents);
 	    contentPane.add(pButtons);
 
 	    setContentPane(contentPane);
 	    pack();
+
+	    Thread watcherThread = new Thread() {
+		@Override
+		public void run() {
+		    try {
+			DecimalFormat df = new DecimalFormat("#,##0");
+			while (true) {
+			    TimeUnit.MILLISECONDS.sleep(500);
+
+			    int items = importThread.getImporter().getNumberOfItems();
+			    int events = importThread.getImporter().getNumberOfEvents();
+			    lDecCntItems.setText("Items loaded: " + df.format(items));
+			    lDecCntEvents.setText("Events loaded: " + df.format(events));
+			}
+		    } catch (InterruptedException e) {
+			// stop work
+		    }
+		}
+	    };
+
+	    bAbort.addActionListener(new ActionListener() {
+		@Override
+		public void actionPerformed(ActionEvent e) {
+		    watcherThread.interrupt();
+		    importThread.interrupt();
+		}
+	    });
+
+	    importThread.setFinishedListener(thread -> {
+		watcherThread.interrupt();
+		this.close();
+		if (finishListener != null) {
+		    finishListener.finished(thread);
+		}
+	    });
+	    
+	    importThread.start();
+	    watcherThread.start();
+	}
+
+	public void close() {
+	    setVisible(false);
 	}
     }
 }

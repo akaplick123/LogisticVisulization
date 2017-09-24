@@ -4,6 +4,7 @@ import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.text.DecimalFormat;
 
 import javax.annotation.PostConstruct;
 import javax.swing.JDesktopPane;
@@ -11,6 +12,7 @@ import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
 
 import org.springframework.stereotype.Component;
@@ -64,7 +66,13 @@ public class MainFrame extends JFrame {
 	menuItem = new JMenuItem("Load");
 	menuItem.setMnemonic(KeyEvent.VK_L);
 	menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, ActionEvent.ALT_MASK));
-	menuItem.addActionListener(new LoadFileAction(desktop, this));
+	menuItem.addActionListener(new LoadFileAction(desktop, this, thread -> {
+	    DecimalFormat df = new DecimalFormat("#,##0");
+	    int items = thread.getImporter().getNumberOfItems();
+	    int events = thread.getImporter().getNumberOfEvents();
+	    String msg = df.format(items) + " items and " + df.format(events) + " events were loaded.";
+	    JOptionPane.showInternalMessageDialog(desktop, msg, "Loading finished", JOptionPane.INFORMATION_MESSAGE);
+	}));
 	menu.add(menuItem);
 
 	// Set up the second menu item.
