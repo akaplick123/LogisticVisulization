@@ -3,7 +3,6 @@ package de.andre.chart.ui.main;
 import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 
 import javax.annotation.PostConstruct;
@@ -16,8 +15,12 @@ import javax.swing.KeyStroke;
 
 import org.springframework.stereotype.Component;
 
+import de.andre.chart.ui.main.actions.CreateNewInternalFrameAction;
+import de.andre.chart.ui.main.actions.LoadFileAction;
+import de.andre.chart.ui.main.actions.QuitAction;
+
 @Component
-public class MainFrame extends JFrame implements ActionListener {
+public class MainFrame extends JFrame {
     private static final long serialVersionUID = 1L;
     private JDesktopPane desktop;
 
@@ -36,7 +39,6 @@ public class MainFrame extends JFrame implements ActionListener {
 
 	// Set up the GUI.
 	desktop = new JDesktopPane(); // a specialized layered pane
-	createFrame(); // create first "window"
 	setContentPane(desktop);
 	setJMenuBar(createMenuBar());
 
@@ -44,7 +46,7 @@ public class MainFrame extends JFrame implements ActionListener {
 	desktop.setDragMode(JDesktopPane.OUTLINE_DRAG_MODE);
     }
 
-    protected JMenuBar createMenuBar() {
+    private JMenuBar createMenuBar() {
 	JMenuBar menuBar = new JMenuBar();
 
 	// Set up the lone menu.
@@ -56,44 +58,23 @@ public class MainFrame extends JFrame implements ActionListener {
 	JMenuItem menuItem = new JMenuItem("New");
 	menuItem.setMnemonic(KeyEvent.VK_N);
 	menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, ActionEvent.ALT_MASK));
-	menuItem.setActionCommand("new");
-	menuItem.addActionListener(this);
+	menuItem.addActionListener(new CreateNewInternalFrameAction(desktop));
+	menu.add(menuItem);
+
+	menuItem = new JMenuItem("Load");
+	menuItem.setMnemonic(KeyEvent.VK_L);
+	menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, ActionEvent.ALT_MASK));
+	menuItem.addActionListener(new LoadFileAction(desktop, this));
 	menu.add(menuItem);
 
 	// Set up the second menu item.
 	menuItem = new JMenuItem("Quit");
 	menuItem.setMnemonic(KeyEvent.VK_Q);
 	menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, ActionEvent.ALT_MASK));
-	menuItem.setActionCommand("quit");
-	menuItem.addActionListener(this);
+	menuItem.addActionListener(new QuitAction());
 	menu.add(menuItem);
 
 	return menuBar;
-    }
-
-    // React to menu selections.
-    public void actionPerformed(ActionEvent e) {
-	if ("new".equals(e.getActionCommand())) { // new
-	    createFrame();
-	} else { // quit
-	    quit();
-	}
-    }
-
-    // Create a new internal frame.
-    protected void createFrame() {
-	MyInternalFrame frame = new MyInternalFrame();
-	frame.setVisible(true); // necessary as of 1.3
-	desktop.add(frame);
-	try {
-	    frame.setSelected(true);
-	} catch (java.beans.PropertyVetoException e) {
-	}
-    }
-
-    // Quit the application.
-    protected void quit() {
-	System.exit(0);
     }
 
     /**
