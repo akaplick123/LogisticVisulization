@@ -7,6 +7,7 @@ import java.io.LineNumberReader;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import de.andre.chart.data.LocalDateTimeLookUp;
 import lombok.extern.log4j.Log4j;
 
 @Log4j
@@ -23,14 +24,15 @@ public class ImportCSVFileThread extends Thread {
     }
 
     private final Collection<File> csvFiles;
-    private final ImportCSVFile importer = new ImportCSVFile();
+    private final ImportCSVFile importer;
     private Throwable caughtException;
     private ThreadStartedListener startedListener;
     private ThreadFinishedListener finishedListener;
 
-    public ImportCSVFileThread(Collection<File> csvFiles) {
+    public ImportCSVFileThread(Collection<File> csvFiles, LocalDateTimeLookUp dateTimeLookup) {
 	super("import csv");
 	this.csvFiles = new ArrayList<>(csvFiles);
+	this.importer = new ImportCSVFile(dateTimeLookup);
     }
 
     @Override

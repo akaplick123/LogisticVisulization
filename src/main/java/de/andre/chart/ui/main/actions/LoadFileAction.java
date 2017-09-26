@@ -21,9 +21,11 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
+import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
+import de.andre.chart.data.LocalDateTimeLookUp;
 import de.andre.chart.process.ImportCSVFileThread;
 import de.andre.chart.process.ImportCSVFileThread.ThreadFinishedListener;
 
@@ -32,11 +34,14 @@ public class LoadFileAction implements ActionListener {
     private final JFrame mainFrame;
     private File lastSelectedDirectory = null;
     private final ThreadFinishedListener finishListener;
+    private final LocalDateTimeLookUp dateTimeLookup;
 
-    public LoadFileAction(JDesktopPane desktop, JFrame mainFrame, ThreadFinishedListener finishListener) {
+    public LoadFileAction(JDesktopPane desktop, JFrame mainFrame, LocalDateTimeLookUp dateTimeLookup,
+	    ThreadFinishedListener finishListener) {
 	this.desktop = desktop;
 	this.mainFrame = mainFrame;
 	this.finishListener = finishListener;
+	this.dateTimeLookup = dateTimeLookup;
     }
 
     @Override
@@ -61,7 +66,7 @@ public class LoadFileAction implements ActionListener {
 
     private void loadFiles(List<File> files) {
 	files.forEach(System.out::println);
-	ImportCSVFileThread importThread = new ImportCSVFileThread(files);
+	ImportCSVFileThread importThread = new ImportCSVFileThread(files, dateTimeLookup);
 
 	JProgressDialog dialog = new JProgressDialog(importThread);
 	dialog.pack();
@@ -120,11 +125,13 @@ public class LoadFileAction implements ActionListener {
 			DecimalFormat df = new DecimalFormat("#,##0");
 			while (true) {
 			    TimeUnit.MILLISECONDS.sleep(500);
-
 			    int items = importThread.getImporter().getNumberOfItems();
 			    int events = importThread.getImporter().getNumberOfEvents();
-			    lDecCntItems.setText("Items loaded: " + df.format(items));
-			    lDecCntEvents.setText("Events loaded: " + df.format(events));
+
+			    SwingUtilities.invokeLater(() -> {
+				lDecCntItems.setText("Items loaded: " + df.format(items));
+				lDecCntEvents.setText("Events loaded: " + df.format(events));
+			    });
 			}
 		    } catch (InterruptedException e) {
 			// stop work
@@ -147,7 +154,7 @@ public class LoadFileAction implements ActionListener {
 		    finishListener.finished(thread);
 		}
 	    });
-	    
+
 	    importThread.start();
 	    watcherThread.start();
 	}

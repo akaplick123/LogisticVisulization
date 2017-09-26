@@ -6,6 +6,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import de.andre.chart.data.LocalDateTimeLookUp;
 import de.andre.chart.data.OrderItem;
 import de.andre.chart.data.OrderItemEvent;
 import de.andre.chart.data.OrderItemState;
@@ -15,6 +16,7 @@ import lombok.extern.log4j.Log4j;
 public class ImportCSVFile {
     private final Collection<OrderItem> orderItems = new ArrayList<>();
     private final Collection<OrderItemEvent> orderItemEvents = new ArrayList<>();
+    private final LocalDateTimeLookUp dateTimeLookup;
 
     private int IDX_COMMKEY = -1;
     private int IDX_KNOWN_OD = -1;
@@ -25,6 +27,10 @@ public class ImportCSVFile {
     private int IDX_TS_LOST_STOCK = -1;
     private int IDX_TS_CANCELED = -1;
     private int IDX_TS_WAITING = -1;
+    
+    public ImportCSVFile(LocalDateTimeLookUp dateTimeLookup) {
+	this.dateTimeLookup = dateTimeLookup;
+    }
 
     public void parseHeader(String line) {
 	// "OD_COMMKEY";"OD_KNOWN";"ORDER_COMMKEY";"ORDER_DATE";
@@ -83,9 +89,13 @@ public class ImportCSVFile {
 	    String part = parts[idx];
 	    if (part != null && part.length() > 0) {
 		try {
-		    LocalDateTime timestamp = LocalDateTime.parse(part, dtf);
-		    OrderItemEvent event = new OrderItemEvent().commkey(commkey).timestamp(timestamp)
-			    .newState(newState);
+		    Integer timestampId = dateTimeLookup.findId(part);
+		    if (timestampId == null) {
+			LocalDateTime timestamp = LocalDateTime.parse(part, dtf);
+			timestampId = dateTimeLookup.add(part, timestamp);
+		    }
+		    OrderItemEvent event = new OrderItemEvent().commkey(commkey).timestampId(timestampId)
+			    .newState(newState.getId());
 		    this.orderItemEvents.add(event);
 		} catch (DateTimeParseException e) {
 		    log.trace("parse", e);

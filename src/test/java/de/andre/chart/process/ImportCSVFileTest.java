@@ -8,6 +8,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import de.andre.chart.data.LocalDateTimeLookUp;
 import de.andre.chart.data.OrderItemState;
 
 public class ImportCSVFileTest {
@@ -22,7 +23,8 @@ public class ImportCSVFileTest {
 
     @Test
     public void testParseLineWithoutHeader() {
-	ImportCSVFile importer = new ImportCSVFile();
+	LocalDateTimeLookUp lookup = new LocalDateTimeLookUp();
+	ImportCSVFile importer = new ImportCSVFile(lookup);
 	importer.parseLine(
 		"4184325;1;4193025;2017-09-20 10:11;BonPrix;856943;Normalservice;1;2017-09-20 10:11;2017-09-20 16:19;HDL;2017-09-20 10:12;2017-09-20 16:19;2017-09-20 10:11;;");
 
@@ -32,7 +34,8 @@ public class ImportCSVFileTest {
 
     @Test
     public void testParseLine_SimpleOrderItem() {
-	ImportCSVFile importer = new ImportCSVFile();
+	LocalDateTimeLookUp lookup = new LocalDateTimeLookUp();
+	ImportCSVFile importer = new ImportCSVFile(lookup);
 	importer.parseHeader(
 		"\"OD_COMMKEY\";\"OD_KNOWN\";\"ORDER_COMMKEY\";\"ORDER_DATE\";\"COMPANYGROUP\";\"ID_ITEMOPTION\";\"DELIVERYCONDITION\";\"QUANTITY\";\"TS_HAS_NO_STOCK\";\"TS_HAS_STOCK\";\"LGR_BEREICH\";\"TS_ABWICKELBAR\";\"TS_FAKTURIERT\";\"TS_NALI\";\"TS_VERWORFEN\";\"TS_WARTEND\"");
 	importer.parseLine(
@@ -45,20 +48,21 @@ public class ImportCSVFileTest {
 
 	assertThat(importer.getOrderItemEvents()).describedAs("events").anySatisfy(e -> {
 	    assertThat(e.commkey()).isEqualTo(4184325);
-	    assertThat(e.timestamp()).isEqualTo(LocalDateTime.of(2017, 9, 20, 10, 11));
-	    assertThat(e.newState()).isEqualTo(OrderItemState.WAITING);
+	    assertThat(e.timestampId()).isEqualTo(lookup.findId(LocalDateTime.of(2017, 9, 20, 10, 11)));
+	    assertThat(e.newState()).isEqualTo(OrderItemState.WAITING.getId());
 	});
 	assertThat(importer.getOrderItemEvents()).describedAs("events").anySatisfy(e -> {
 	    assertThat(e.commkey()).isEqualTo(4184325);
-	    assertThat(e.timestamp()).isEqualTo(LocalDateTime.of(2017, 9, 20, 16, 19));
-	    assertThat(e.newState()).isEqualTo(OrderItemState.PROCESSED);
+	    assertThat(e.timestampId()).isEqualTo(lookup.findId(LocalDateTime.of(2017, 9, 20, 16, 19)));
+	    assertThat(e.newState()).isEqualTo(OrderItemState.PROCESSED.getId());
 	});
 	assertThat(importer.getOrderItemEvents()).describedAs("events").hasSize(4);
     }
 
     @Test
     public void testParseLine_NoStockItem() {
-	ImportCSVFile importer = new ImportCSVFile();
+	LocalDateTimeLookUp lookup = new LocalDateTimeLookUp();
+	ImportCSVFile importer = new ImportCSVFile(lookup);
 	importer.parseHeader(
 		"\"OD_COMMKEY\";\"OD_KNOWN\";\"ORDER_COMMKEY\";\"ORDER_DATE\";\"COMPANYGROUP\";\"ID_ITEMOPTION\";\"DELIVERYCONDITION\";\"QUANTITY\";\"TS_HAS_NO_STOCK\";\"TS_HAS_STOCK\";\"LGR_BEREICH\";\"TS_ABWICKELBAR\";\"TS_FAKTURIERT\";\"TS_NALI\";\"TS_VERWORFEN\";\"TS_WARTEND\"");
 	importer.parseLine("251931;0;0;;;0;;;;2017-09-18 00:34;HDL;2017-09-16 14:12;2017-09-18 00:34;;;");
@@ -70,13 +74,13 @@ public class ImportCSVFileTest {
 
 	assertThat(importer.getOrderItemEvents()).describedAs("events").anySatisfy(e -> {
 	    assertThat(e.commkey()).isEqualTo(251931);
-	    assertThat(e.timestamp()).isEqualTo(LocalDateTime.of(2017, 9, 16, 14, 12));
-	    assertThat(e.newState()).isEqualTo(OrderItemState.PROCESSABLE);
+	    assertThat(e.timestampId()).isEqualTo(lookup.findId(LocalDateTime.of(2017, 9, 16, 14, 12)));
+	    assertThat(e.newState()).isEqualTo(OrderItemState.PROCESSABLE.getId());
 	});
 	assertThat(importer.getOrderItemEvents()).describedAs("events").anySatisfy(e -> {
 	    assertThat(e.commkey()).isEqualTo(251931);
-	    assertThat(e.timestamp()).isEqualTo(LocalDateTime.of(2017, 9, 18, 0, 34));
-	    assertThat(e.newState()).isEqualTo(OrderItemState.PROCESSED);
+	    assertThat(e.timestampId()).isEqualTo(lookup.findId(LocalDateTime.of(2017, 9, 18, 0, 34)));
+	    assertThat(e.newState()).isEqualTo(OrderItemState.PROCESSED.getId());
 	});
 	assertThat(importer.getOrderItemEvents()).describedAs("events").hasSize(2);
     }

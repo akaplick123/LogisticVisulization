@@ -13,7 +13,7 @@ public class OrderItem {
     private int commkey;
     private int quantity;
     private boolean fromNali;
-    private OrderItemState orderItemState = OrderItemState.NONE_EXISTENT;
+    private byte orderItemState = OrderItemState.NONE_EXISTENT.getId();
     
     public void applyEvent(OrderItemEvent event) {
 	if (event.commkey() == commkey()) {

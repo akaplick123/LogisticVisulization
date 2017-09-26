@@ -10,7 +10,7 @@ import de.andre.chart.ui.main.MainFrame;
 
 @SpringBootApplication
 public class SpringBootSwingApplication implements CommandLineRunner {
-    
+
     @Autowired
     private MainFrame mainFrame;
 

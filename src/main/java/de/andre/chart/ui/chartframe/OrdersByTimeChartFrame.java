@@ -24,6 +24,7 @@ import org.jfree.data.time.TimeTableXYDataset;
 import org.jfree.data.xy.XYDataset;
 
 import de.andre.chart.data.Datacenter;
+import de.andre.chart.data.LocalDateTimeLookUp;
 import de.andre.chart.data.OrderItemEvent;
 import de.andre.chart.data.OrderItemEventGroups;
 import de.andre.chart.data.groups.TimeToGroup;
@@ -33,11 +34,13 @@ public class OrdersByTimeChartFrame extends JInternalFrameBase {
     private static final long serialVersionUID = 1L;
 
     private TimeTableXYDataset dataset = new TimeTableXYDataset();
-    private Datacenter data;
+    private final Datacenter data;
+    private final LocalDateTimeLookUp dateTimeLookup;
 
-    public OrdersByTimeChartFrame(Datacenter data) {
+    public OrdersByTimeChartFrame(Datacenter data, LocalDateTimeLookUp dateTimeLookup) {
 	super();
 	this.data = data;
+	this.dateTimeLookup = dateTimeLookup;
 	setTitle("Ordered Quantity");
 
 	ChartPanel panel = createChartPanel();
@@ -53,7 +56,7 @@ public class OrdersByTimeChartFrame extends JInternalFrameBase {
 	final HashSet<Integer> seenCommkeys = new HashSet<>();
 	final GroupAdder adder = new GroupAdder();
 	final OrderItemEventGroups events = data.getEvents();
-	final TimeToGroup<OrderItemEvent> grouper = new TimeToGroup<>(OrderItemEvent::timestamp);
+	final TimeToGroup<OrderItemEvent> grouper = new TimeToGroup<>(e -> dateTimeLookup.getTimeById(e.timestampId()));
 
 	events.getAllKeys() //
 		.sorted().flatMap(group -> events.getValues(group)) //

@@ -5,8 +5,8 @@ import de.andre.chart.data.groups.TimedGroups;
 
 public class OrderItemEventGroups extends TimedGroups<OrderItemEvent> {
 
-    public OrderItemEventGroups() {
-	super(new TimeToGroup<OrderItemEvent>(OrderItemEvent::timestamp));
+    public OrderItemEventGroups(final LocalDateTimeLookUp lookup) {
+	super(new TimeToGroup<OrderItemEvent>(e -> lookup.getTimeById(e.timestampId())));
     }
 
 }

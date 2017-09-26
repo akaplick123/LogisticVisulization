@@ -14,11 +14,13 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import de.andre.chart.data.Datacenter;
+import de.andre.chart.data.LocalDateTimeLookUp;
 import de.andre.chart.ui.chartframe.OrdersByTimeChartFrame;
 import de.andre.chart.ui.main.actions.CreateInternalFrameAction;
 import de.andre.chart.ui.main.actions.LoadFileAction;
@@ -30,6 +32,8 @@ public class MainFrame extends JFrame {
     private JDesktopPane desktop;
     @Autowired
     private Datacenter datacenter;
+    @Autowired
+    private LocalDateTimeLookUp dateTimeLookup;
 
     @PostConstruct
     public void init() {
@@ -70,7 +74,7 @@ public class MainFrame extends JFrame {
 	JMenuItem menuItem = new JMenuItem("Orders by time");
 	menuItem.setMnemonic(KeyEvent.VK_T);
 	menuItem.addActionListener(
-		new CreateInternalFrameAction(desktop, () -> new OrdersByTimeChartFrame(datacenter)));
+		new CreateInternalFrameAction(desktop, () -> new OrdersByTimeChartFrame(datacenter, dateTimeLookup)));
 	menu.add(menuItem);
 	menuBar.add(menu);
     }
@@ -89,7 +93,7 @@ public class MainFrame extends JFrame {
 	menuItem = new JMenuItem("Load");
 	menuItem.setMnemonic(KeyEvent.VK_L);
 	menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, ActionEvent.ALT_MASK));
-	menuItem.addActionListener(new LoadFileAction(desktop, this, thread -> {
+	menuItem.addActionListener(new LoadFileAction(desktop, this, dateTimeLookup, thread -> {
 	    datacenter.clear();
 	    datacenter.getItems().addAll(thread.getImporter().getOrderItems());
 	    datacenter.getEvents().addAll(thread.getImporter().getOrderItemEvents());
@@ -116,18 +120,16 @@ public class MainFrame extends JFrame {
     public void createAndShowGUI() {
 	// Schedule a job for the event-dispatching thread:
 	// creating and showing this application's GUI.
-	javax.swing.SwingUtilities.invokeLater(new Runnable() {
-	    public void run() {
-		// Make sure we have nice window decorations.
-		JFrame.setDefaultLookAndFeelDecorated(true);
+	SwingUtilities.invokeLater(() -> {
+	    // Make sure we have nice window decorations.
+	    JFrame.setDefaultLookAndFeelDecorated(true);
 
-		// Create and set up the window.
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+	    // Create and set up the window.
+	    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-		// Display the window.
-		setAutoRequestFocus(true);
-		setVisible(true);
-	    }
+	    // Display the window.
+	    setAutoRequestFocus(true);
+	    setVisible(true);
 	});
     }
 }
