@@ -25,19 +25,20 @@ import org.jfree.data.xy.XYDataset;
 
 import de.andre.chart.data.Datacenter;
 import de.andre.chart.data.LocalDateTimeLookUp;
+import de.andre.chart.data.OrderItem;
 import de.andre.chart.data.OrderItemEvent;
 import de.andre.chart.data.OrderItemEventGroups;
 import de.andre.chart.data.groups.TimeToGroup;
-import de.andre.chart.ui.chartframe.helper.GroupAdder;
+import de.andre.chart.ui.chartframe.helper.SubgroupAdder;
 
-public class OrdersByTimeChartFrame extends JInternalFrameBase {
+public class OrdersByCompanyAndTimeChartFrame extends JInternalFrameBase {
     private static final long serialVersionUID = 1L;
 
     private TimeTableXYDataset dataset = new TimeTableXYDataset();
     private final Datacenter data;
     private final LocalDateTimeLookUp dateTimeLookup;
 
-    public OrdersByTimeChartFrame(Datacenter data, LocalDateTimeLookUp dateTimeLookup) {
+    public OrdersByCompanyAndTimeChartFrame(Datacenter data, LocalDateTimeLookUp dateTimeLookup) {
 	super();
 	this.data = data;
 	this.dateTimeLookup = dateTimeLookup;
@@ -55,7 +56,7 @@ public class OrdersByTimeChartFrame extends JInternalFrameBase {
 	dataset.setNotify(false);
 	dataset.clear();
 	final HashSet<Integer> seenCommkeys = new HashSet<>();
-	final GroupAdder adder = new GroupAdder();
+	final SubgroupAdder adder = new SubgroupAdder();
 	final OrderItemEventGroups events = data.getEvents();
 	final TimeToGroup<OrderItemEvent> grouper = new TimeToGroup<>(e -> dateTimeLookup.getTimeById(e.timestampId()));
 
@@ -67,13 +68,14 @@ public class OrdersByTimeChartFrame extends JInternalFrameBase {
 		    if (!seenCommkeys.contains(commkey)) {
 			seenCommkeys.add(commkey);
 			LocalDateTime time = grouper.getGroupOf(event);
-			adder.add(time, data.getItems().getByCommkey(event.commkey()).quantity());
+			OrderItem item = data.getItems().getByCommkey(event.commkey());
+			adder.add(time, item.company(), item.quantity());
 		    }
 		});
 
-	adder.getData().entrySet().stream() //
+	adder.getEntries().stream() //
 		.forEach(entry -> {
-		    dataset.add(toMinute(entry.getKey()), entry.getValue(), "ordered");
+		    dataset.add(toMinute(entry.getTime()), entry.getValue(), entry.getSubgroup());
 		});
 	dataset.setNotify(true);
     }

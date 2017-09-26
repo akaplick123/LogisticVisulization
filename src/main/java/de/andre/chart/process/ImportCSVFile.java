@@ -21,13 +21,14 @@ public class ImportCSVFile {
     private int IDX_COMMKEY = -1;
     private int IDX_KNOWN_OD = -1;
     private int IDX_QUANTITY = -1;
+    private int IDX_COMPANY = -1;
     private int IDX_TS_ORDER = -1;
     private int IDX_TS_PROCESSABLE = -1;
     private int IDX_TS_PROCESSED = -1;
     private int IDX_TS_LOST_STOCK = -1;
     private int IDX_TS_CANCELED = -1;
     private int IDX_TS_WAITING = -1;
-    
+
     public ImportCSVFile(LocalDateTimeLookUp dateTimeLookup) {
 	this.dateTimeLookup = dateTimeLookup;
     }
@@ -44,6 +45,7 @@ public class ImportCSVFile {
 	    IDX_COMMKEY = isOneOf(IDX_COMMKEY, idx, part, "OD_COMMKEY");
 	    IDX_KNOWN_OD = isOneOf(IDX_KNOWN_OD, idx, part, "OD_KNOWN");
 	    IDX_QUANTITY = isOneOf(IDX_QUANTITY, idx, part, "QUANTITY");
+	    IDX_COMPANY = isOneOf(IDX_COMPANY, idx, part, "COMPANYGROUP");
 	    IDX_TS_ORDER = isOneOf(IDX_TS_ORDER, idx, part, "ORDER_DATE");
 	    IDX_TS_PROCESSABLE = isOneOf(IDX_TS_PROCESSABLE, idx, part, "TS_ABWICKELBAR");
 	    IDX_TS_PROCESSED = isOneOf(IDX_TS_PROCESSED, idx, part, "TS_FAKTURIERT");
@@ -70,7 +72,10 @@ public class ImportCSVFile {
 	if (commkey >= 0) {
 	    int quantity = extractInt(1, IDX_QUANTITY, parts);
 	    int odKnown = extractInt(0, IDX_KNOWN_OD, parts);
-	    OrderItem item = new OrderItem().commkey(commkey).quantity(quantity).fromNali(odKnown == 0);
+	    String company = extractString("N/A", IDX_COMPANY, parts);
+
+	    OrderItem item = new OrderItem().commkey(commkey).quantity(quantity).fromNali(odKnown == 0)
+		    .company(company);
 	    this.orderItems.add(item);
 
 	    extractAndAddEvent(IDX_TS_ORDER, OrderItemState.WAITING, commkey, parts);
@@ -102,6 +107,16 @@ public class ImportCSVFile {
 		}
 	    }
 	}
+    }
+
+    private static String extractString(String defaultValue, int idx, String[] parts) {
+	if (0 <= idx && idx < parts.length) {
+	    String part = parts[idx];
+	    if (part != null && part.length() > 0) {
+		return part;
+	    }
+	}
+	return defaultValue;
     }
 
     private static int extractInt(int defaultValue, int idx, String[] parts) {

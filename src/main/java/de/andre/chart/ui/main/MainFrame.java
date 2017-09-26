@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 
 import de.andre.chart.data.Datacenter;
 import de.andre.chart.data.LocalDateTimeLookUp;
+import de.andre.chart.ui.chartframe.OrdersByCompanyAndTimeChartFrame;
 import de.andre.chart.ui.chartframe.OrdersByTimeChartFrame;
 import de.andre.chart.ui.main.actions.CreateInternalFrameAction;
 import de.andre.chart.ui.main.actions.LoadFileAction;
@@ -76,6 +77,13 @@ public class MainFrame extends JFrame {
 	menuItem.addActionListener(
 		new CreateInternalFrameAction(desktop, () -> new OrdersByTimeChartFrame(datacenter, dateTimeLookup)));
 	menu.add(menuItem);
+
+	menuItem = new JMenuItem("Orders by company and time");
+	menuItem.setMnemonic(KeyEvent.VK_C);
+	menuItem.addActionListener(new CreateInternalFrameAction(desktop,
+		() -> new OrdersByCompanyAndTimeChartFrame(datacenter, dateTimeLookup)));
+	menu.add(menuItem);
+
 	menuBar.add(menu);
     }
 
