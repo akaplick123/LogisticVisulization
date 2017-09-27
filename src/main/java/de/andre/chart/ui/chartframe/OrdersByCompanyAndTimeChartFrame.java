@@ -1,8 +1,14 @@
 package de.andre.chart.ui.chartframe;
 
 import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.List;
+
+import javax.swing.JButton;
+import javax.swing.JDesktopPane;
+import javax.swing.JPanel;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
@@ -13,8 +19,8 @@ import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.labels.StandardXYToolTipGenerator;
 import org.jfree.chart.labels.XYToolTipGenerator;
 import org.jfree.chart.plot.XYPlot;
-import org.jfree.chart.renderer.xy.StackedXYAreaRenderer;
-import org.jfree.chart.renderer.xy.XYAreaRenderer;
+import org.jfree.chart.renderer.xy.StackedXYAreaRenderer2;
+import org.jfree.chart.renderer.xy.XYAreaRenderer2;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.urls.StandardXYURLGenerator;
 import org.jfree.chart.urls.XYURLGenerator;
@@ -29,6 +35,7 @@ import de.andre.chart.data.OrderItem;
 import de.andre.chart.data.OrderItemEvent;
 import de.andre.chart.data.OrderItemEventGroups;
 import de.andre.chart.data.groups.TimeToGroup;
+import de.andre.chart.ui.chartframe.helper.SimpleFilterAndOrderConfiguration;
 import de.andre.chart.ui.chartframe.helper.SubgroupAdder;
 
 public class OrdersByCompanyAndTimeChartFrame extends JInternalFrameBase {
@@ -37,22 +44,36 @@ public class OrdersByCompanyAndTimeChartFrame extends JInternalFrameBase {
     private TimeTableXYDataset dataset = new TimeTableXYDataset();
     private final Datacenter data;
     private final LocalDateTimeLookUp dateTimeLookup;
+    private final SimpleFilterAndOrderConfiguration filter1 = new SimpleFilterAndOrderConfiguration();
 
-    public OrdersByCompanyAndTimeChartFrame(Datacenter data, LocalDateTimeLookUp dateTimeLookup) {
+    public OrdersByCompanyAndTimeChartFrame(JDesktopPane desktop, Datacenter data, LocalDateTimeLookUp dateTimeLookup) {
 	super();
 	this.data = data;
 	this.dateTimeLookup = dateTimeLookup;
 	setTitle("Ordered Quantity");
 
+	setLayout(new BorderLayout(5, 5));
+
 	ChartPanel panel = createChartPanel();
-
-	fillChartwithData();
-
-	setLayout(new BorderLayout());
 	add(panel, BorderLayout.CENTER);
+	JPanel pFilter = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 5));
+	JButton bFilter = new JButton("advanced configuration");
+	pFilter.add(bFilter);
+	add(pFilter, BorderLayout.SOUTH);
+
+	bFilter.addActionListener(e1 -> {
+	    FilterAndOrderConfigurationFrame frame = new FilterAndOrderConfigurationFrame(filter1);
+	    frame.center(OrdersByCompanyAndTimeChartFrame.this);
+	    frame.addInternalFrameClosedListener(e2 -> {
+		updateChartData();
+	    });
+	    frame.show(desktop);
+	});
+
+	updateChartData();
     }
 
-    private void fillChartwithData() {
+    private void updateChartData() {
 	dataset.setNotify(false);
 	dataset.clear();
 	final HashSet<Integer> seenCommkeys = new HashSet<>();
@@ -61,22 +82,36 @@ public class OrdersByCompanyAndTimeChartFrame extends JInternalFrameBase {
 	final TimeToGroup<OrderItemEvent> grouper = new TimeToGroup<>(e -> dateTimeLookup.getTimeById(e.timestampId()));
 
 	events.getAllKeys() //
-		.sorted().flatMap(group -> events.getValues(group)) //
-		.filter(event -> !data.getItems().getByCommkey(event.commkey()).fromNali()) //
+		.sorted() //
+		.flatMap(group -> events.getValues(group)) // convert LocalDate
+		// to events
+		.filter(event -> data.getItemByCommkey(event.commkey()) != null) //
+		.filter(event -> !data.getItemByCommkey(event.commkey()).fromNali())
+		//
+		.filter(event -> filter1.isIncluded(data.getItemByCommkey(event.commkey()).company()))
+		//
 		.forEach(event -> {
 		    final int commkey = event.commkey();
 		    if (!seenCommkeys.contains(commkey)) {
 			seenCommkeys.add(commkey);
 			LocalDateTime time = grouper.getGroupOf(event);
-			OrderItem item = data.getItems().getByCommkey(event.commkey());
+			OrderItem item = data.getItemByCommkey(commkey);
 			adder.add(time, item.company(), item.quantity());
+			filter1.add(item.company());
 		    }
 		});
 
-	adder.getEntries().stream() //
-		.forEach(entry -> {
-		    dataset.add(toMinute(entry.getTime()), entry.getValue(), entry.getSubgroup());
-		});
+	List<LocalDateTime> dates = adder.allDates();
+	for (LocalDateTime date : dates) {
+	    TimePeriod minute = toMinute(date);
+	    for (String company : filter1.getOrderedItems()) {
+		if (filter1.isIncluded(company)) {
+		    int value = adder.getValue(date, company);
+		    dataset.add(minute, Double.valueOf(value), company);
+		}
+	    }
+	}
+
 	dataset.setNotify(true);
     }
 
@@ -160,7 +195,7 @@ public class OrdersByCompanyAndTimeChartFrame extends JInternalFrameBase {
 
 	XYURLGenerator urlGenerator = new StandardXYURLGenerator();
 
-	XYAreaRenderer renderer = new StackedXYAreaRenderer(StackedXYAreaRenderer.AREA);
+	XYAreaRenderer2 renderer = new StackedXYAreaRenderer2();
 	renderer.setBaseToolTipGenerator(toolTipGenerator);
 	renderer.setURLGenerator(urlGenerator);
 	plot.setRenderer(renderer);

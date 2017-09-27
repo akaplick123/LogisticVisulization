@@ -19,6 +19,10 @@ public class Datacenter {
 	getEvents().clear();
     }
 
+    public OrderItem getItemByCommkey(int commkey) {
+	return items.getByCommkey(commkey);
+    }
+
     public OrderItemEventGroups getEvents() {
 	if (events == null) {
 	    events =  new OrderItemEventGroups(lookup);

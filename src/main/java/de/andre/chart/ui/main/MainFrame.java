@@ -81,7 +81,7 @@ public class MainFrame extends JFrame {
 	menuItem = new JMenuItem("Orders by company and time");
 	menuItem.setMnemonic(KeyEvent.VK_C);
 	menuItem.addActionListener(new CreateInternalFrameAction(desktop,
-		() -> new OrdersByCompanyAndTimeChartFrame(datacenter, dateTimeLookup)));
+		() -> new OrdersByCompanyAndTimeChartFrame(desktop, datacenter, dateTimeLookup)));
 	menu.add(menuItem);
 
 	menuBar.add(menu);
@@ -95,7 +95,7 @@ public class MainFrame extends JFrame {
 	// Set up the first menu item.
 	JMenuItem menuItem = new JMenuItem("New");
 	menuItem.setMnemonic(KeyEvent.VK_N);
-	menuItem.addActionListener(new CreateInternalFrameAction(desktop, () -> new MyInternalFrame()));
+	menuItem.addActionListener(new CreateInternalFrameAction(desktop, () -> new MyInternalFrame(desktop)));
 	menu.add(menuItem);
 
 	menuItem = new JMenuItem("Load");

@@ -1,4 +1,4 @@
-package de.andre.chart.ui.main;
+package de.andre.chart.ui.component;
 
 import java.awt.Component;
 import java.awt.event.KeyAdapter;

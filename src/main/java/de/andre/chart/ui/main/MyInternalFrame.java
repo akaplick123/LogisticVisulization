@@ -7,11 +7,9 @@ import java.awt.event.ActionListener;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
-import javax.swing.DefaultListModel;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
+import javax.swing.JDesktopPane;
 import javax.swing.JPanel;
-import javax.swing.ListModel;
 import javax.swing.event.InternalFrameAdapter;
 import javax.swing.event.InternalFrameEvent;
 
@@ -33,7 +31,9 @@ import org.jfree.data.time.Minute;
 import org.jfree.data.time.TimeTableXYDataset;
 import org.jfree.data.xy.XYDataset;
 
+import de.andre.chart.ui.chartframe.FilterAndOrderConfigurationFrame;
 import de.andre.chart.ui.chartframe.JInternalFrameBase;
+import de.andre.chart.ui.chartframe.helper.SimpleFilterAndOrderConfiguration;
 
 public class MyInternalFrame extends JInternalFrameBase {
     private static final long serialVersionUID = 1L;
@@ -44,23 +44,45 @@ public class MyInternalFrame extends JInternalFrameBase {
     private int value1 = 0;
     private int value2 = 0;
 
-    public MyInternalFrame() {
+    public MyInternalFrame(final JDesktopPane desktop) {
 	super();
 
 	// ...Create the GUI and put it in the window...
 	setLayout(new BorderLayout());
 
-	JPanel pTest = new JPanel(new FlowLayout());
-	DefaultListModel<JCheckBox> model = new DefaultListModel<>();
-	JCheckBoxList checkedList = new JCheckBoxList(model);
-	model.addElement(new JCheckBox("Checkbox1"));
-	model.addElement(new JCheckBox("Checkbox2"));
-	model.addElement(new JCheckBox("Checkbox3"));
-	pTest.add(checkedList);
-	add(pTest, BorderLayout.CENTER);
+	JButton bFilter = new JButton("filter");
+	add(bFilter, BorderLayout.NORTH);
+	final SimpleFilterAndOrderConfiguration filter1 = new SimpleFilterAndOrderConfiguration();
+	filter1.add("dummy a");
+	filter1.add("dummy b");
+	filter1.add("dummy c");
+	filter1.add("dummy d");
 
-//	ChartPanel panel = createChartPanel();
-//	add(panel, BorderLayout.CENTER);
+	bFilter.addActionListener(e -> {
+	    FilterAndOrderConfigurationFrame frame = new FilterAndOrderConfigurationFrame(filter1);
+	    frame.center(MyInternalFrame.this);
+	    frame.addInternalFrameListener(new InternalFrameAdapter() {
+		@Override
+		public void internalFrameClosed(InternalFrameEvent e) {
+		    System.err.println("internalFrameClosed: ");
+		    System.err.println("Filter (after): " + filter1);
+		}
+
+		public void internalFrameOpened(InternalFrameEvent e) {
+		    System.err.println("internalFrameOpened: ");
+		    System.err.println("Filter (before): " + filter1);
+		};
+	    });
+	    frame.setVisible(true);
+	    desktop.add(frame);
+	    try {
+		frame.setSelected(true);
+	    } catch (java.beans.PropertyVetoException ex) {
+	    }
+	});
+
+	ChartPanel panel = createChartPanel();
+	add(panel, BorderLayout.CENTER);
 
 	JPanel pThreadController = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
 	JButton bStop = new JButton("stop");
@@ -72,7 +94,7 @@ public class MyInternalFrame extends JInternalFrameBase {
 	bSlower.setEnabled(false);
 	JButton bFaster = new JButton("faster");
 	bFaster.setEnabled(bSlower.isEnabled());
-	
+
 	pThreadController.add(bStop);
 	pThreadController.add(bPause);
 	pThreadController.add(bPlay);
@@ -132,7 +154,7 @@ public class MyInternalFrame extends JInternalFrameBase {
 		worker.start();
 	    }
 	});
-	
+
 	bSlower.addActionListener(new ActionListener() {
 	    @Override
 	    public void actionPerformed(ActionEvent e) {
@@ -292,7 +314,7 @@ public class MyInternalFrame extends JInternalFrameBase {
 		    if (!isPaused() && millisWaited >= milliSecondsWait) {
 			currentMinute = (Minute) currentMinute.next();
 			value1 += r.nextInt(10) - 5;
-			value2 += Math.round(r.nextGaussian() * 5);		
+			value2 += Math.round(r.nextGaussian() * 5);
 			dataset.add(currentMinute, value1, "Cat 1");
 			dataset.add(currentMinute, value2, "Cat 2");
 			millisWaited = 0;
@@ -324,12 +346,12 @@ public class MyInternalFrame extends JInternalFrameBase {
 		return paused;
 	    }
 	}
-	
+
 	public void increaseSpeed() {
 	    milliSecondsWait /= 1.3d;
 	    milliSecondsWait = Math.max(50, milliSecondsWait);
 	}
-	
+
 	public void decreaseSpeed() {
 	    milliSecondsWait *= 1.3d;
 	}
