@@ -7,8 +7,11 @@ import java.awt.event.ActionListener;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
+import javax.swing.DefaultListModel;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JPanel;
+import javax.swing.ListModel;
 import javax.swing.event.InternalFrameAdapter;
 import javax.swing.event.InternalFrameEvent;
 
@@ -45,9 +48,19 @@ public class MyInternalFrame extends JInternalFrameBase {
 	super();
 
 	// ...Create the GUI and put it in the window...
-	ChartPanel panel = createChartPanel();
 	setLayout(new BorderLayout());
-	add(panel, BorderLayout.CENTER);
+
+	JPanel pTest = new JPanel(new FlowLayout());
+	DefaultListModel<JCheckBox> model = new DefaultListModel<>();
+	JCheckBoxList checkedList = new JCheckBoxList(model);
+	model.addElement(new JCheckBox("Checkbox1"));
+	model.addElement(new JCheckBox("Checkbox2"));
+	model.addElement(new JCheckBox("Checkbox3"));
+	pTest.add(checkedList);
+	add(pTest, BorderLayout.CENTER);
+
+//	ChartPanel panel = createChartPanel();
+//	add(panel, BorderLayout.CENTER);
 
 	JPanel pThreadController = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
 	JButton bStop = new JButton("stop");
