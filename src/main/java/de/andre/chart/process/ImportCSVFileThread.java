@@ -37,6 +37,7 @@ public class ImportCSVFileThread extends Thread {
 
     @Override
     public void run() {
+	    log.debug("start import thread");
 	this.caughtException = null;
 
 	try {
@@ -46,11 +47,13 @@ public class ImportCSVFileThread extends Thread {
 	    for (File file: csvFiles) {
 		importFile(file);
 	    }
+	    log.debug("file import finished");
 	} catch (InterruptedException e) {
 	    // make nothing others then stop execution
 	} finally {
 	    if (finishedListener != null) {
 		finishedListener.finished(this);
+	    log.debug("finished listener finished");
 	    }
 	}
     }

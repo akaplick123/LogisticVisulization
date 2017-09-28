@@ -26,8 +26,10 @@ import de.andre.chart.ui.chartframe.OrdersByTimeChartFrame;
 import de.andre.chart.ui.main.actions.CreateInternalFrameAction;
 import de.andre.chart.ui.main.actions.LoadFileAction;
 import de.andre.chart.ui.main.actions.QuitAction;
+import lombok.extern.log4j.Log4j;
 
 @Component
+@Log4j
 public class MainFrame extends JFrame {
     private static final long serialVersionUID = 1L;
     private JDesktopPane desktop;
@@ -38,7 +40,7 @@ public class MainFrame extends JFrame {
 
     @PostConstruct
     public void init() {
-	setTitle("InternalFrameDemo");
+	setTitle("Logistic Visulization");
 
 	// Make the big window be indented 50 pixels from each edge
 	// of the screen.
@@ -102,9 +104,11 @@ public class MainFrame extends JFrame {
 	menuItem.setMnemonic(KeyEvent.VK_L);
 	menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, ActionEvent.ALT_MASK));
 	menuItem.addActionListener(new LoadFileAction(desktop, this, dateTimeLookup, thread -> {
+		log.debug("copy data to datacenter");
 	    datacenter.clear();
 	    datacenter.getItems().addAll(thread.getImporter().getOrderItems());
 	    datacenter.getEvents().addAll(thread.getImporter().getOrderItemEvents());
+		log.debug("finished copy data to datacenter");
 
 	    DecimalFormat df = new DecimalFormat("#,##0");
 	    int items = thread.getImporter().getNumberOfItems();
