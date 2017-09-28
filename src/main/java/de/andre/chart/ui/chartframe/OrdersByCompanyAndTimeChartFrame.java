@@ -153,10 +153,8 @@ public class OrdersByCompanyAndTimeChartFrame extends JInternalFrameBase {
 	 *            the dataset for the chart (<code>null</code> permitted).
 	 *
 	 * @return A time series chart.
-	 * 
-	 * @since 1.0.16
 	 */
-	public static JFreeChart createTimeSeriesChart(String title, String timeAxisLabel, String valueAxisLabel,
+	private JFreeChart createTimeSeriesChart(String title, String timeAxisLabel, String valueAxisLabel,
 			XYDataset dataset) {
 		return createTimeSeriesChart(title, timeAxisLabel, valueAxisLabel, dataset, true, true, false);
 	}
@@ -187,7 +185,7 @@ public class OrdersByCompanyAndTimeChartFrame extends JInternalFrameBase {
 	 *
 	 * @return A time series chart.
 	 */
-	public static JFreeChart createTimeSeriesChart(String title, String timeAxisLabel, String valueAxisLabel,
+	private JFreeChart createTimeSeriesChart(String title, String timeAxisLabel, String valueAxisLabel,
 			XYDataset dataset, boolean legend, boolean tooltips, boolean urls) {
 
 		ValueAxis timeAxis = new DateAxis(timeAxisLabel);

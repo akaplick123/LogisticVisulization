@@ -23,6 +23,7 @@ import de.andre.chart.data.Datacenter;
 import de.andre.chart.data.LocalDateTimeLookUp;
 import de.andre.chart.ui.chartframe.OrdersByCompanyAndTimeChartFrame;
 import de.andre.chart.ui.chartframe.OrdersByTimeChartFrame;
+import de.andre.chart.ui.chartframe.OrdersFullfillmentByTimeChartFrame;
 import de.andre.chart.ui.main.actions.CreateInternalFrameAction;
 import de.andre.chart.ui.main.actions.LoadFileAction;
 import de.andre.chart.ui.main.actions.QuitAction;
@@ -49,7 +50,7 @@ public class MainFrame extends JFrame {
 	setBounds(insetPercent * screenSize.width / 100, //
 		insetPercent * screenSize.height / 100, //
 		(100 - 2 * insetPercent) * screenSize.width / 100, //
-		(100 - 2 * insetPercent) * screenSize.height / 100);
+		(100 - 3 * insetPercent) * screenSize.height / 100);
 
 	// Set up the GUI.
 	desktop = new JDesktopPane(); // a specialized layered pane
@@ -84,6 +85,12 @@ public class MainFrame extends JFrame {
 	menuItem.setMnemonic(KeyEvent.VK_C);
 	menuItem.addActionListener(new CreateInternalFrameAction(desktop,
 		() -> new OrdersByCompanyAndTimeChartFrame(desktop, datacenter, dateTimeLookup)));
+	menu.add(menuItem);
+
+	menuItem = new JMenuItem("Orderfullfillment over time");
+	menuItem.setMnemonic(KeyEvent.VK_C);
+	menuItem.addActionListener(new CreateInternalFrameAction(desktop,
+		() -> new OrdersFullfillmentByTimeChartFrame(desktop, datacenter, dateTimeLookup)));
 	menu.add(menuItem);
 
 	menuBar.add(menu);

@@ -15,4 +15,13 @@ public enum OrderItemState {
     public byte getId() {
 	return sortId;
     }
+
+    public static OrderItemState of(byte stateId) {
+	for (OrderItemState state: values()) {
+	    if (state.getId() == stateId) {
+		return state;
+	    }
+	}
+	return null;
+    }
 }
