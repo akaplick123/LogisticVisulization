@@ -44,7 +44,7 @@ import de.andre.chart.ui.chartframe.helper.SubgroupAdder;
 import lombok.extern.log4j.Log4j;
 
 @Log4j
-public class OrdersFullfillmentByTimeChartFrame extends JInternalFrameBase {
+public class OrdersFulfillmentByTimeChartFrame extends JInternalFrameBase {
   private static final String STATE_FUTURE_ORDER = "future";
   private static final String STATE_ORDERED = "ordered";
   private static final String STATE_EX_NALI = "ex NALI";
@@ -68,7 +68,7 @@ public class OrdersFullfillmentByTimeChartFrame extends JInternalFrameBase {
   private AtomicBoolean repaintRequestPending = new AtomicBoolean(true);
   private final Comparator<OrderItemEvent> eventComparator;
 
-  public OrdersFullfillmentByTimeChartFrame(JDesktopPane desktop, Datacenter data,
+  public OrdersFulfillmentByTimeChartFrame(JDesktopPane desktop, Datacenter data,
       LocalDateTimeLookUp dateTimeLookup) {
     super();
     this.data = data;
