@@ -4,9 +4,11 @@ import java.awt.BorderLayout;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.JDesktopPane;
 import javax.swing.JScrollBar;
@@ -39,230 +41,263 @@ import de.andre.chart.data.OrderItemState;
 import de.andre.chart.data.groups.TimeToGroup;
 import de.andre.chart.ui.chartframe.helper.SimpleFilterAndOrderConfiguration;
 import de.andre.chart.ui.chartframe.helper.SubgroupAdder;
+import lombok.extern.log4j.Log4j;
 
+@Log4j
 public class OrdersFullfillmentByTimeChartFrame extends JInternalFrameBase {
-    private static final String STATE_FUTURE_ORDER = "future";
-    private static final String STATE_ORDERED = "ordered";
-    private static final String STATE_EX_NALI = "ex NALI";
-    private static final String STATE_CANCELED = "canceled";
-    private static final String STATE_PROCESSED = "processed";
+  private static final String STATE_FUTURE_ORDER = "future";
+  private static final String STATE_ORDERED = "ordered";
+  private static final String STATE_EX_NALI = "ex NALI";
+  private static final String STATE_CANCELED = "canceled";
+  private static final String STATE_PROCESSED = "processed";
 
-    private static final long serialVersionUID = 1L;
+  private static final long serialVersionUID = 1L;
 
-    private final TimeTableXYDataset dataset = new TimeTableXYDataset();
-    private final Datacenter data;
-    private final LocalDateTimeLookUp dateTimeLookup;
-    private final SimpleFilterAndOrderConfiguration companyFilter = new SimpleFilterAndOrderConfiguration();
-    private final SimpleFilterAndOrderConfiguration stateOrder = new SimpleFilterAndOrderConfiguration();
-    private XYAreaRenderer2 renderer;
-    private LocalDateTime currentTime = LocalDateTime.MIN;
-    private List<LocalDateTime> timeGroupList = new ArrayList<>();
-    private JScrollBar timeScrollBar;
+  private final TimeTableXYDataset dataset = new TimeTableXYDataset();
+  private final Datacenter data;
+  private final LocalDateTimeLookUp dateTimeLookup;
+  private final SimpleFilterAndOrderConfiguration companyFilter =
+      new SimpleFilterAndOrderConfiguration();
+  private final SimpleFilterAndOrderConfiguration stateOrder =
+      new SimpleFilterAndOrderConfiguration();
+  private XYAreaRenderer2 renderer;
+  private LocalDateTime currentTime = LocalDateTime.MIN;
+  private List<LocalDateTime> timeGroupList = new ArrayList<>();
+  private JScrollBar timeScrollBar;
+  private Thread repaintChartThread = null;
+  private AtomicBoolean repaintRequestPending = new AtomicBoolean(true);
+  private final Comparator<OrderItemEvent> eventComparator;
 
-    public OrdersFullfillmentByTimeChartFrame(JDesktopPane desktop, Datacenter data,
-	    LocalDateTimeLookUp dateTimeLookup) {
-	super();
-	this.data = data;
-	this.dateTimeLookup = dateTimeLookup;
-	setTitle("Ordered Quantity");
+  public OrdersFullfillmentByTimeChartFrame(JDesktopPane desktop, Datacenter data,
+      LocalDateTimeLookUp dateTimeLookup) {
+    super();
+    this.data = data;
+    this.dateTimeLookup = dateTimeLookup;
+    this.eventComparator = (a, b) -> {
+      LocalDateTime timeA = dateTimeLookup.getTimeById(a.timestampId());
+      LocalDateTime timeB = dateTimeLookup.getTimeById(b.timestampId());
+      return timeA.compareTo(timeB);
+    };
+    setTitle("Ordered Quantity");
 
-	setLayout(new BorderLayout());
+    setLayout(new BorderLayout());
 
-	ChartPanel panel = createChartPanel();
-	add(panel, BorderLayout.CENTER);
+    ChartPanel panel = createChartPanel();
+    add(panel, BorderLayout.CENTER);
 
-	timeScrollBar = new JScrollBar(JScrollBar.HORIZONTAL);
-	add(timeScrollBar, BorderLayout.SOUTH);
+    timeScrollBar = new JScrollBar(JScrollBar.HORIZONTAL);
+    add(timeScrollBar, BorderLayout.SOUTH);
 
-	stateOrder.add(STATE_CANCELED);
-	stateOrder.add(STATE_FUTURE_ORDER);
-	stateOrder.add(STATE_EX_NALI);
-	stateOrder.add(STATE_ORDERED);
-	stateOrder.add(STATE_PROCESSED);
-	updateChartContent();
+    stateOrder.add(STATE_CANCELED);
+    stateOrder.add(STATE_FUTURE_ORDER);
+    stateOrder.add(STATE_EX_NALI);
+    stateOrder.add(STATE_ORDERED);
+    stateOrder.add(STATE_PROCESSED);
+    initializeChartContent();
+    requestUpdateChartContent(0);
 
-	timeScrollBar.addAdjustmentListener(e -> {
-	    int idx = e.getValue();
-	    currentTime = timeGroupList.get(idx);
-	    updateChartContent();
-	});
+    timeScrollBar.addAdjustmentListener(e -> {
+      if (!e.getValueIsAdjusting()) {
+        int idx = e.getValue();
+        requestUpdateChartContent(idx);
+      }
+    });
+  }
+
+  private void requestUpdateChartContent(final int value) {
+    repaintRequestPending.set(true);
+    if (repaintChartThread == null || repaintChartThread.isInterrupted()
+        || !repaintChartThread.isAlive()) {
+      this.repaintChartThread = new Thread() {
+        public void run() {
+          while (repaintRequestPending.getAndSet(false)) {
+            if (timeGroupList != null && timeGroupList.size() > 0) {
+              currentTime = timeGroupList.get(value);
+              timeScrollBar.setToolTipText("Time selected: " + currentTime);
+              updateChartContent();
+            }
+          }
+        }
+      };
+      this.repaintChartThread.start();
+    }
+  }
+
+  /** map each order item to it's corresponding creation time */
+  private final HashMap<Integer, LocalDateTime> commkeysToTimeBins = new HashMap<>();
+
+  private void initializeChartContent() {
+    log.debug("start initializeChartContent at date: " + currentTime);
+    final OrderItemEventGroups events = data.getEvents();
+    final TimeToGroup<OrderItemEvent> grouper =
+        new TimeToGroup<>(e -> dateTimeLookup.getTimeById(e.timestampId()));
+    final HashSet<LocalDateTime> timeGroupSet = new HashSet<>();
+
+    for (LocalDateTime timeGroup : events.getAllSortedKeys()) {
+      for (OrderItemEvent event : events.getSortedEvents(timeGroup, eventComparator)) {
+        final int commkey = event.commkey();
+        OrderItem orderItem = data.getItemByCommkey(commkey);
+        companyFilter.add(orderItem.company());
+
+        LocalDateTime time = commkeysToTimeBins.get(commkey);
+        if (time == null) {
+          // commkey is new
+          time = grouper.getGroupOf(event);
+          commkeysToTimeBins.put(commkey, time);
+        }
+        timeGroupSet.add(time);
+      }
     }
 
-    private void updateChartContent() {
-	dataset.setNotify(false);
-	dataset.clear();
-	final HashMap<Integer, LocalDateTime> commkeysToBins = new HashMap<>();
-	final SubgroupAdder adder = new SubgroupAdder();
-	final OrderItemEventGroups events = data.getEvents();
-	final TimeToGroup<OrderItemEvent> grouper = new TimeToGroup<>(e -> dateTimeLookup.getTimeById(e.timestampId()));
-	final HashSet<LocalDateTime> timeGroups = new HashSet<>();
+    // calibrate scrollbar
+    this.timeGroupList.clear();
+    this.timeGroupList.addAll(timeGroupSet);
+    Collections.sort(this.timeGroupList);
+    this.timeScrollBar.setMinimum(0);
+    this.timeScrollBar
+        .setMaximum(this.timeGroupList.size() - 1 + this.timeScrollBar.getVisibleAmount());
 
-	events.getAllKeys() //
-		.sorted().flatMap(group -> events.getValues(group)) //
-		.filter(event -> !data.getItems().getByCommkey(event.commkey()).fromNali()) //
-		.forEach(event -> {
-		    final int commkey = event.commkey();
-		    OrderItem orderItem = data.getItemByCommkey(commkey);
-		    companyFilter.add(orderItem.company());
-		    // apply some filtering ...
+    log.debug("finished initializeChartContent at date: " + currentTime);
+  }
 
-		    // begin count logic
-		    LocalDateTime time = commkeysToBins.get(commkey);
-		    boolean newItem = (time == null);
-		    if (time == null) {
-			// commkey is new
-			time = grouper.getGroupOf(event);
-			commkeysToBins.put(commkey, time);
-		    }
-		    timeGroups.add(time);
+  private void updateChartContent() {
+    log.debug("start updateChartContent at date: " + currentTime);
+    final LocalDateTime now = currentTime;
+    final SubgroupAdder adder = new SubgroupAdder();
+    final OrderItemEventGroups events = data.getEvents();
+    final TimeToGroup<OrderItemEvent> grouper =
+        new TimeToGroup<>(e -> dateTimeLookup.getTimeById(e.timestampId()));
+    final HashMap<Integer, String> itemToStateMap = new HashMap<>();
 
-		    String subgroupIncrease = null;
-		    String subgroupDecrease = null;
-		    if (time.isAfter(currentTime)) {
-			// check later
-		    } else if (event.newState() == OrderItemState.PROCESSED.getId()) {
-			subgroupIncrease = STATE_PROCESSED;
-			if (orderItem.fromNali()) {
-			    subgroupDecrease = STATE_EX_NALI;
-			} else {
-			    subgroupDecrease = STATE_ORDERED;
-			}
-		    } else if (event.newState() == OrderItemState.CANCELED.getId()) {
-			subgroupIncrease = STATE_CANCELED;
-			if (orderItem.fromNali()) {
-			    subgroupDecrease = STATE_EX_NALI;
-			} else {
-			    subgroupDecrease = STATE_ORDERED;
-			}
-		    }
-		    if (subgroupIncrease != null) {
-			adder.add(time, subgroupIncrease, orderItem.quantity());
-		    }
-		    if (subgroupDecrease != null) {
-			adder.add(time, subgroupDecrease, -1 * orderItem.quantity());
-		    }
+    for (LocalDateTime timeGroup : events.getAllSortedKeys()) {
+      for (OrderItemEvent event : events.getSortedEvents(timeGroup, eventComparator)) {
+        if (data.getItemByCommkey(event.commkey()).fromNali()) {
+          // skip ex NALIs
+          continue;
+        }
 
-		    if (newItem) {
-			if (time.isAfter(currentTime)) {
-			    subgroupIncrease = STATE_FUTURE_ORDER;
-			} else if (orderItem.fromNali()) {
-			    subgroupIncrease = STATE_EX_NALI;
-			} else {
-			    subgroupIncrease = STATE_ORDERED;
-			}
-			adder.add(time, subgroupIncrease, orderItem.quantity());
-		    }
-		});
+        final int commkey = event.commkey();
+        LocalDateTime eventTime = grouper.getGroupOf(event);
 
-	// draw chart
-	List<LocalDateTime> dates = adder.allDates();
-	for (LocalDateTime date : dates) {
-	    TimePeriod minute = toMinute(date);
-	    for (String state : stateOrder.getOrderedItems()) {
-		if (stateOrder.isIncluded(state)) {
-		    int value = adder.getValue(date, state);
-		    dataset.add(minute, Double.valueOf(value), state);
-		}
-	    }
-	}
-
-	// calibrate scrollbar
-	this.timeGroupList.clear();
-	this.timeGroupList.addAll(timeGroups);
-	Collections.sort(this.timeGroupList);
-	this.timeScrollBar.setMinimum(0);
-	this.timeScrollBar.setMaximum(this.timeGroupList.size() - 1 + this.timeScrollBar.getVisibleAmount());
-
-	// todo: // renderer.setSeriesFillPaint(series, paint, notify);
-
-	dataset.setNotify(true);
+        if (eventTime.isAfter(now)) {
+          // ignore events from the future
+          if (!itemToStateMap.containsKey(commkey)) {
+            itemToStateMap.put(commkey, STATE_FUTURE_ORDER);
+          }
+        } else {
+          // event is not within the future
+          if (event.newState() == OrderItemState.PROCESSED.getId()) {
+            itemToStateMap.put(commkey, STATE_PROCESSED);
+          } else if (event.newState() == OrderItemState.CANCELED.getId()) {
+            itemToStateMap.put(commkey, STATE_CANCELED);
+          } else if (!itemToStateMap.containsKey(commkey)) {
+            itemToStateMap.put(commkey, STATE_ORDERED);
+          }
+        }
+      }
     }
 
-    private static TimePeriod toMinute(LocalDateTime value) {
-	return new Minute(value.getMinute(), value.getHour(), value.getDayOfMonth(), value.getMonthValue(),
-		value.getYear());
+    // aggregate item states
+    itemToStateMap.entrySet().forEach(e -> {
+      int commkey = e.getKey();
+      String state = e.getValue();
+      LocalDateTime orderItemTime = commkeysToTimeBins.get(commkey);
+      OrderItem orderItem = data.getItemByCommkey(commkey);
+      adder.add(orderItemTime, state, orderItem.quantity());
+    });
+
+    // draw chart
+    dataset.setNotify(false);
+    dataset.clear();
+    List<LocalDateTime> dates = adder.allDates();
+    for (LocalDateTime date : dates) {
+      TimePeriod minute = toMinute(date);
+      for (String state : stateOrder.getOrderedItems()) {
+        if (stateOrder.isIncluded(state)) {
+          int value = adder.getValue(date, state);
+          dataset.add(minute, Double.valueOf(value), state);
+        }
+      }
     }
 
-    private ChartPanel createChartPanel() {
-	JFreeChart chart = createTimeSeriesChart("Ordered Quantity", "time", "Quantity [AK]", dataset);
-	ChartPanel panel = new ChartPanel(chart);
-	panel.setFillZoomRectangle(true);
-	panel.setMouseWheelEnabled(true);
-	return panel;
-    }
+    // todo: // renderer.setSeriesFillPaint(series, paint, notify);
+    dataset.setNotify(true);
 
-    /**
-     * Creates and returns a time series chart. A time series chart is an
-     * {@link XYPlot} with a {@link DateAxis} for the x-axis and a
-     * {@link NumberAxis} for the y-axis. The default renderer is an
-     * {@link XYLineAndShapeRenderer}.
-     * <P>
-     * A convenient dataset to use with this chart is a
-     * {@link org.jfree.data.time.TimeSeriesCollection}.
-     *
-     * @param title
-     *            the chart title (<code>null</code> permitted).
-     * @param timeAxisLabel
-     *            a label for the time axis (<code>null</code> permitted).
-     * @param valueAxisLabel
-     *            a label for the value axis (<code>null</code> permitted).
-     * @param dataset
-     *            the dataset for the chart (<code>null</code> permitted).
-     *
-     * @return A time series chart.
-     */
-    private JFreeChart createTimeSeriesChart(String title, String timeAxisLabel, String valueAxisLabel,
-	    XYDataset dataset) {
-	return createTimeSeriesChart(title, timeAxisLabel, valueAxisLabel, dataset, true, true, false);
-    }
+    log.debug("finished updateChartContent at date: " + currentTime);
+  }
 
-    /**
-     * Creates and returns a time series chart. A time series chart is an
-     * {@link XYPlot} with a {@link DateAxis} for the x-axis and a
-     * {@link NumberAxis} for the y-axis. The default renderer is an
-     * {@link XYLineAndShapeRenderer}.
-     * <P>
-     * A convenient dataset to use with this chart is a
-     * {@link org.jfree.data.time.TimeSeriesCollection}.
-     *
-     * @param title
-     *            the chart title (<code>null</code> permitted).
-     * @param timeAxisLabel
-     *            a label for the time axis (<code>null</code> permitted).
-     * @param valueAxisLabel
-     *            a label for the value axis (<code>null</code> permitted).
-     * @param dataset
-     *            the dataset for the chart (<code>null</code> permitted).
-     * @param legend
-     *            a flag specifying whether or not a legend is required.
-     * @param tooltips
-     *            configure chart to generate tool tips?
-     * @param urls
-     *            configure chart to generate URLs?
-     *
-     * @return A time series chart.
-     */
-    private JFreeChart createTimeSeriesChart(String title, String timeAxisLabel, String valueAxisLabel,
-	    XYDataset dataset, boolean legend, boolean tooltips, boolean urls) {
+  private static TimePeriod toMinute(LocalDateTime value) {
+    return new Minute(value.getMinute(), value.getHour(), value.getDayOfMonth(),
+        value.getMonthValue(), value.getYear());
+  }
 
-	ValueAxis timeAxis = new DateAxis(timeAxisLabel);
-	timeAxis.setLowerMargin(0.02); // reduce the default margins
-	timeAxis.setUpperMargin(0.02);
-	NumberAxis valueAxis = new NumberAxis(valueAxisLabel);
-	valueAxis.setAutoRangeIncludesZero(false); // override default
-	XYPlot plot = new XYPlot(dataset, timeAxis, valueAxis, null);
+  private ChartPanel createChartPanel() {
+    JFreeChart chart = createTimeSeriesChart("Ordered Quantity", "time", "Quantity [AK]", dataset);
+    ChartPanel panel = new ChartPanel(chart);
+    panel.setFillZoomRectangle(true);
+    panel.setMouseWheelEnabled(true);
+    return panel;
+  }
 
-	XYToolTipGenerator toolTipGenerator = StandardXYToolTipGenerator.getTimeSeriesInstance();
+  /**
+   * Creates and returns a time series chart. A time series chart is an {@link XYPlot} with a
+   * {@link DateAxis} for the x-axis and a {@link NumberAxis} for the y-axis. The default renderer
+   * is an {@link XYLineAndShapeRenderer}.
+   * <P>
+   * A convenient dataset to use with this chart is a
+   * {@link org.jfree.data.time.TimeSeriesCollection}.
+   *
+   * @param title the chart title (<code>null</code> permitted).
+   * @param timeAxisLabel a label for the time axis (<code>null</code> permitted).
+   * @param valueAxisLabel a label for the value axis (<code>null</code> permitted).
+   * @param dataset the dataset for the chart (<code>null</code> permitted).
+   *
+   * @return A time series chart.
+   */
+  private JFreeChart createTimeSeriesChart(String title, String timeAxisLabel,
+      String valueAxisLabel, XYDataset dataset) {
+    return createTimeSeriesChart(title, timeAxisLabel, valueAxisLabel, dataset, true, true, false);
+  }
 
-	XYURLGenerator urlGenerator = new StandardXYURLGenerator();
+  /**
+   * Creates and returns a time series chart. A time series chart is an {@link XYPlot} with a
+   * {@link DateAxis} for the x-axis and a {@link NumberAxis} for the y-axis. The default renderer
+   * is an {@link XYLineAndShapeRenderer}.
+   * <P>
+   * A convenient dataset to use with this chart is a
+   * {@link org.jfree.data.time.TimeSeriesCollection}.
+   *
+   * @param title the chart title (<code>null</code> permitted).
+   * @param timeAxisLabel a label for the time axis (<code>null</code> permitted).
+   * @param valueAxisLabel a label for the value axis (<code>null</code> permitted).
+   * @param dataset the dataset for the chart (<code>null</code> permitted).
+   * @param legend a flag specifying whether or not a legend is required.
+   * @param tooltips configure chart to generate tool tips?
+   * @param urls configure chart to generate URLs?
+   *
+   * @return A time series chart.
+   */
+  private JFreeChart createTimeSeriesChart(String title, String timeAxisLabel,
+      String valueAxisLabel, XYDataset dataset, boolean legend, boolean tooltips, boolean urls) {
 
-	renderer = new StackedXYAreaRenderer2();
-	renderer.setBaseToolTipGenerator(toolTipGenerator);
-	renderer.setURLGenerator(urlGenerator);
-	plot.setRenderer(renderer);
+    ValueAxis timeAxis = new DateAxis(timeAxisLabel);
+    timeAxis.setLowerMargin(0.02); // reduce the default margins
+    timeAxis.setUpperMargin(0.02);
+    NumberAxis valueAxis = new NumberAxis(valueAxisLabel);
+    valueAxis.setAutoRangeIncludesZero(false); // override default
+    XYPlot plot = new XYPlot(dataset, timeAxis, valueAxis, null);
 
-	JFreeChart chart = new JFreeChart(title, JFreeChart.DEFAULT_TITLE_FONT, plot, legend);
-	ChartFactory.getChartTheme().apply(chart);
-	return chart;
-    }
+    XYToolTipGenerator toolTipGenerator = StandardXYToolTipGenerator.getTimeSeriesInstance();
+
+    XYURLGenerator urlGenerator = new StandardXYURLGenerator();
+
+    renderer = new StackedXYAreaRenderer2();
+    renderer.setBaseToolTipGenerator(toolTipGenerator);
+    renderer.setURLGenerator(urlGenerator);
+    plot.setRenderer(renderer);
+
+    JFreeChart chart = new JFreeChart(title, JFreeChart.DEFAULT_TITLE_FONT, plot, legend);
+    ChartFactory.getChartTheme().apply(chart);
+    return chart;
+  }
 }
