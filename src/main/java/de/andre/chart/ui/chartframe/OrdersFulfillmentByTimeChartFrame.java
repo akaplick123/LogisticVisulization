@@ -47,7 +47,7 @@ import lombok.extern.log4j.Log4j;
 public class OrdersFulfillmentByTimeChartFrame extends JInternalFrameBase {
   private static final String STATE_FUTURE_ORDER = "future";
   private static final String STATE_ORDERED = "ordered";
-  private static final String STATE_EX_NALI = "ex NALI";
+//  private static final String STATE_EX_NALI = "ex NALI";
   private static final String STATE_CANCELED = "canceled";
   private static final String STATE_PROCESSED = "processed";
 
@@ -67,6 +67,7 @@ public class OrdersFulfillmentByTimeChartFrame extends JInternalFrameBase {
   private Thread repaintChartThread = null;
   private AtomicBoolean repaintRequestPending = new AtomicBoolean(true);
   private final Comparator<OrderItemEvent> eventComparator;
+  private final ArrayList<OrderItemEvent> relevantEvents = new ArrayList<>();
 
   public OrdersFulfillmentByTimeChartFrame(JDesktopPane desktop, Datacenter data,
       LocalDateTimeLookUp dateTimeLookup) {
@@ -90,7 +91,7 @@ public class OrdersFulfillmentByTimeChartFrame extends JInternalFrameBase {
 
     stateOrder.add(STATE_CANCELED);
     stateOrder.add(STATE_FUTURE_ORDER);
-    stateOrder.add(STATE_EX_NALI);
+//    stateOrder.add(STATE_EX_NALI);
     stateOrder.add(STATE_ORDERED);
     stateOrder.add(STATE_PROCESSED);
     initializeChartContent();
@@ -140,12 +141,18 @@ public class OrdersFulfillmentByTimeChartFrame extends JInternalFrameBase {
         companyFilter.add(orderItem.company());
 
         LocalDateTime time = commkeysToTimeBins.get(commkey);
+        if (time == null || event.newState() == OrderItemState.PROCESSED.getId()
+            || event.newState() == OrderItemState.CANCELED.getId()) {
+          relevantEvents.add(event);
+        }
+
         if (time == null) {
           // commkey is new
           time = grouper.getGroupOf(event);
           commkeysToTimeBins.put(commkey, time);
         }
         timeGroupSet.add(time);
+
       }
     }
 
@@ -164,35 +171,32 @@ public class OrdersFulfillmentByTimeChartFrame extends JInternalFrameBase {
     log.debug("start updateChartContent at date: " + currentTime);
     final LocalDateTime now = currentTime;
     final SubgroupAdder adder = new SubgroupAdder();
-    final OrderItemEventGroups events = data.getEvents();
     final TimeToGroup<OrderItemEvent> grouper =
         new TimeToGroup<>(e -> dateTimeLookup.getTimeById(e.timestampId()));
     final HashMap<Integer, String> itemToStateMap = new HashMap<>();
 
-    for (LocalDateTime timeGroup : events.getAllSortedKeys()) {
-      for (OrderItemEvent event : events.getSortedEvents(timeGroup, eventComparator)) {
-        if (data.getItemByCommkey(event.commkey()).fromNali()) {
-          // skip ex NALIs
-          continue;
+    for (OrderItemEvent event : relevantEvents) {
+      final int commkey = event.commkey();
+      if (data.getItemByCommkey(commkey).fromNali()) {
+        // skip ex NALIs
+        continue;
+      }
+
+      LocalDateTime eventTime = grouper.getGroupOf(event);
+
+      if (eventTime.isAfter(now)) {
+        // ignore events from the future
+        if (!itemToStateMap.containsKey(commkey)) {
+          itemToStateMap.put(commkey, STATE_FUTURE_ORDER);
         }
-
-        final int commkey = event.commkey();
-        LocalDateTime eventTime = grouper.getGroupOf(event);
-
-        if (eventTime.isAfter(now)) {
-          // ignore events from the future
-          if (!itemToStateMap.containsKey(commkey)) {
-            itemToStateMap.put(commkey, STATE_FUTURE_ORDER);
-          }
-        } else {
-          // event is not within the future
-          if (event.newState() == OrderItemState.PROCESSED.getId()) {
-            itemToStateMap.put(commkey, STATE_PROCESSED);
-          } else if (event.newState() == OrderItemState.CANCELED.getId()) {
-            itemToStateMap.put(commkey, STATE_CANCELED);
-          } else if (!itemToStateMap.containsKey(commkey)) {
-            itemToStateMap.put(commkey, STATE_ORDERED);
-          }
+      } else {
+        // event is not within the future
+        if (event.newState() == OrderItemState.PROCESSED.getId()) {
+          itemToStateMap.put(commkey, STATE_PROCESSED);
+        } else if (event.newState() == OrderItemState.CANCELED.getId()) {
+          itemToStateMap.put(commkey, STATE_CANCELED);
+        } else if (!itemToStateMap.containsKey(commkey)) {
+          itemToStateMap.put(commkey, STATE_ORDERED);
         }
       }
     }
