@@ -117,13 +117,7 @@ public class MainFrame extends JFrame {
 	menuItem = new JMenuItem("Load");
 	menuItem.setMnemonic(KeyEvent.VK_L);
 	menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, ActionEvent.ALT_MASK));
-	menuItem.addActionListener(new LoadFileAction(desktop, this, dateTimeLookup, thread -> {
-		log.debug("copy data to datacenter");
-	    datacenter.clear();
-	    datacenter.getItems().addAll(thread.getImporter().getOrderItems());
-	    datacenter.getEvents().addAll(thread.getImporter().getOrderItemEvents());
-		log.debug("finished copy data to datacenter");
-
+	menuItem.addActionListener(new LoadFileAction(desktop, this, datacenter, dateTimeLookup, thread -> {
 	    DecimalFormat df = new DecimalFormat("#,##0");
 	    int items = thread.getImporter().getNumberOfItems();
 	    int events = thread.getImporter().getNumberOfEvents();
