@@ -7,7 +7,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -36,7 +35,6 @@ import org.jfree.chart.urls.StandardXYURLGenerator;
 import org.jfree.chart.urls.XYURLGenerator;
 import org.jfree.data.time.Minute;
 import org.jfree.data.time.TimePeriod;
-import org.jfree.data.time.TimeTableXYDataset;
 import org.jfree.data.xy.XYDataset;
 
 import de.andre.chart.data.Datacenter;
@@ -48,6 +46,7 @@ import de.andre.chart.data.OrderItemState;
 import de.andre.chart.data.groups.TimeToGroup;
 import de.andre.chart.ui.chartframe.helper.SimpleFilterAndOrderConfiguration;
 import de.andre.chart.ui.chartframe.helper.SubgroupAdder;
+import de.andre.chart.ui.chartframe.helper.jfreechart.BetterTimeTableXYDataset;
 import lombok.extern.log4j.Log4j;
 
 @Log4j
@@ -72,7 +71,7 @@ public class OrdersFulfillmentByTimeChartFrame2 extends JInternalFrameBase {
       new SimpleFilterAndOrderConfiguration();
 
   /** dataset for JFreeChart */
-  private final TimeTableXYDataset dataset = new TimeTableXYDataset();
+  private final BetterTimeTableXYDataset dataset = new BetterTimeTableXYDataset();
   /** renderer for JFreeChart */
   private XYAreaRenderer2 renderer;
 
@@ -230,35 +229,37 @@ public class OrdersFulfillmentByTimeChartFrame2 extends JInternalFrameBase {
 
   private void updateChart() {
     try {
-      SwingUtilities.invokeAndWait(() -> {
-        log.debug("start updateChart at date: " + currentTime);
-        final SubgroupAdder barChartData = this.itemStates.getBarChartData();
-
-        // draw chart
-        dataset.setNotify(false);
-        dataset.clear();
-        List<LocalDateTime> dates = barChartData.allDates();
-        log.debug("start loop");
-        for (LocalDateTime date : dates) {
-          TimePeriod minute = toMinute(date);
-          for (String state : stateOrder.getOrderedItems()) {
-            if (stateOrder.isIncluded(state)) {
-              int value = barChartData.getValue(date, state);
-              dataset.add(minute, Double.valueOf(value), state);
-            }
-          }
-        }
-
-        log.debug("end loop and notify");
-        // todo: // renderer.setSeriesFillPaint(series, paint, notify);
-        dataset.setNotify(true);
-        log.debug("finished updateChart at date: " + currentTime);
-      });
+      SwingUtilities.invokeAndWait(this::updateChartInternal);
     } catch (InvocationTargetException e) {
       e.printStackTrace();
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
+  }
+
+  private void updateChartInternal() {
+      log.debug("start updateChart at date: " + currentTime);
+      final SubgroupAdder barChartData = this.itemStates.getBarChartData();
+
+      // draw chart
+      dataset.setNotify(false);
+      dataset.clear();
+      List<LocalDateTime> dates = barChartData.allDates();
+      log.debug("start loop");
+      for (LocalDateTime date : dates) {
+        TimePeriod minute = toMinute(date);
+        for (String state : stateOrder.getOrderedItems()) {
+          if (stateOrder.isIncluded(state)) {
+            int value = barChartData.getValue(date, state);
+            dataset.add(minute, Double.valueOf(value), state);
+          }
+        }
+      }
+
+      log.debug("end loop and notify");
+      // todo: // renderer.setSeriesFillPaint(series, paint, notify);
+      dataset.setNotify(true);
+      log.debug("finished updateChart at date: " + currentTime);
   }
 
   private void incrementCurrentTime() {
@@ -439,26 +440,26 @@ public class OrdersFulfillmentByTimeChartFrame2 extends JInternalFrameBase {
   private static class CachedMinute extends Minute {
     private static final long serialVersionUID = 1L;
 
-    private static HashMap<LocalDateTime, CachedMinute> minutes = new HashMap<>();
+    private static HashMap<LocalDateTime, Minute> minutes = new HashMap<>();
 
-    private boolean pegExecuted = false;
-
-    public CachedMinute(int minute, int hour, int day, int month, int year) {
-      super(minute, hour, day, month, year);
-    }
-
-    @Override
-    public void peg(Calendar calendar) {
-      if (!pegExecuted) {
-        super.peg(calendar);
-        pegExecuted = true;
-      }
-    }
+//    private boolean pegExecuted = false;
+//
+//    public CachedMinute(int minute, int hour, int day, int month, int year) {
+//      super(minute, hour, day, month, year);
+//    }
+//
+//    @Override
+//    public void peg(Calendar calendar) {
+//      if (!pegExecuted) {
+//        super.peg(calendar);
+//        pegExecuted = true;
+//      }
+//    }
 
     public static Minute toMinute(LocalDateTime time) {
-      CachedMinute result = minutes.get(time);
+	Minute result = minutes.get(time);
       if (result == null) {
-        result = new CachedMinute(time.getMinute(), time.getHour(), time.getDayOfMonth(),
+        result = new Minute(time.getMinute(), time.getHour(), time.getDayOfMonth(),
             time.getMonthValue(), time.getYear());
         minutes.put(time, result);
       }
@@ -479,12 +480,16 @@ public class OrdersFulfillmentByTimeChartFrame2 extends JInternalFrameBase {
     public void run() {
       try {
         while (!stopRequested) {
-          Thread.sleep(50);
+          sleep();
           task.execute();
         }
       } catch (InterruptedException e) {
         // forced exit thread
       }
+    }
+
+    private void sleep() throws InterruptedException {
+	Thread.sleep(50);
     }
 
     /**
