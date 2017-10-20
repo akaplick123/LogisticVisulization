@@ -48,6 +48,10 @@ public abstract class JInternalFrameBase extends JInternalFrame {
 	}
     }
 
+    /**
+     * adds another internalFrameClosed listener
+     * @param listener the action to be executed on internalFrameClosed events
+     */
     public void addInternalFrameClosedListener(InternalFrameClosedListener listener) {
 	this.addInternalFrameListener(new InternalFrameAdapter() {
 	    @Override

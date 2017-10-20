@@ -12,71 +12,78 @@ import java.util.stream.Stream;
 import de.andre.chart.ui.chartframe.helper.SortedList;
 
 public class TimedGroups<V> {
-  private final HashMap<LocalDateTime, SortedList<V>> groups = new HashMap<>();
-  private final GroupKeyExtractor<V> grouper;
+    private final HashMap<LocalDateTime, SortedList<V>> groups = new HashMap<>();
+    private final GroupKeyExtractor<V> grouper;
 
-  @FunctionalInterface
-  public static interface GroupKeyExtractor<V> {
-    public LocalDateTime getGroupOf(V value);
-  }
-
-  public TimedGroups(GroupKeyExtractor<V> grouper) {
-    this.grouper = grouper;
-  }
-
-  public void add(V value) {
-    LocalDateTime groupKey = groupOf(value);
-    SortedList<V> group = groups.get(groupKey);
-    if (group == null) {
-      group = new SortedList<>();
-      groups.put(groupKey, group);
+    @FunctionalInterface
+    public static interface GroupKeyExtractor<V> {
+	public LocalDateTime getGroupOf(V value);
     }
-    group.add(value);
-  }
 
-  private LocalDateTime groupOf(V value) {
-    return grouper.getGroupOf(value);
-  }
-
-  public void addAll(Collection<V> values) {
-    values.forEach(this::add);
-  }
-
-  public Stream<LocalDateTime> getAllKeys() {
-    return getAllSortedKeys().stream();
-  }
-
-  public List<LocalDateTime> getAllSortedKeys() {
-    List<LocalDateTime> result = new ArrayList<>(groups.keySet());
-    Collections.sort(result);
-    return result;
-  }
-
-  public Stream<LocalDateTime> getAllKeysBetween(final LocalDateTime minDateExclusive,
-      final LocalDateTime maxDateInclusive) {
-    return getAllKeys() //
-        .filter(time -> time.isAfter(minDateExclusive)) //
-        .filter(time -> !time.isAfter(maxDateInclusive));
-  }
-
-  public Stream<V> getValues(LocalDateTime timeGroup) {
-    SortedList<V> group = groups.get(timeGroup);
-    if (group == null) {
-      return new SortedList<V>().stream();
+    public TimedGroups(GroupKeyExtractor<V> grouper) {
+	this.grouper = grouper;
     }
-    return group.stream();
-  }
 
-  public List<V> getSortedEvents(LocalDateTime timeGroup, Comparator<V> comp) {
-    SortedList<V> group = groups.get(timeGroup);
-    if (group == null) {
-      return new SortedList<V>();
+    public void add(V value) {
+	LocalDateTime groupKey = groupOf(value);
+	SortedList<V> group = groups.get(groupKey);
+	if (group == null) {
+	    group = new SortedList<>();
+	    groups.put(groupKey, group);
+	}
+	group.add(value);
     }
-    group.singleSort(comp);
-    return group;
-  }
 
-  public void clear() {
-    groups.clear();
-  }
+    private LocalDateTime groupOf(V value) {
+	return grouper.getGroupOf(value);
+    }
+
+    public void addAll(Collection<V> values) {
+	values.forEach(this::add);
+    }
+
+    public Stream<LocalDateTime> getAllKeys() {
+	return getAllSortedKeys().stream();
+    }
+
+    public List<LocalDateTime> getAllSortedKeys() {
+	List<LocalDateTime> result = new ArrayList<>(groups.keySet());
+	Collections.sort(result);
+	return result;
+    }
+
+    public Stream<LocalDateTime> getAllKeysBetween(final LocalDateTime minDateExclusive,
+	    final LocalDateTime maxDateInclusive) {
+	return getAllKeys() //
+		.filter(time -> time.isAfter(minDateExclusive)) //
+		.filter(time -> !time.isAfter(maxDateInclusive));
+    }
+
+    public Stream<V> getValues(LocalDateTime timeGroup) {
+	SortedList<V> group = groups.get(timeGroup);
+	if (group == null) {
+	    return new SortedList<V>().stream();
+	}
+	return group.stream();
+    }
+
+    /**
+     * @param timeGroup
+     *            a time group
+     * @param eventComparator
+     *            comparator to sort all events within that time group
+     * @return all events of given time group sorted by given comparator
+     */
+    public List<V> getSortedEvents(LocalDateTime timeGroup, Comparator<V> eventComparator) {
+	SortedList<V> group = groups.get(timeGroup);
+	if (group == null) {
+	    return new SortedList<V>();
+	}
+	group.singleSort(eventComparator);
+	return group;
+    }
+
+    public void clear() {
+	groups.clear();
+    }
 }

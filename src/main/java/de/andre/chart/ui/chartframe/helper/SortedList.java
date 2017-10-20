@@ -8,130 +8,167 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 
+/**
+ * a simple list which can easily be sorted (when needed)
+ * 
+ * @author andre
+ *
+ * @param <T>
+ *            element type
+ */
 public class SortedList<T> implements List<T> {
-  private final ArrayList<T> data = new ArrayList<>();
-  private boolean isSorted = false;
+    private final ArrayList<T> data = new ArrayList<>();
+    /** <code>true</code> if no items out of order */ 
+    private boolean isSorted = true;
 
-  public void add(int index, T element) {
-    data.add(index, element);
-    this.isSorted = false;
-  }
-
-  public boolean add(T e) {
-    boolean result = data.add(e);
-    this.isSorted = false;
-    return result;
-  }
-
-  public boolean addAll(Collection<? extends T> c) {
-    boolean result = data.addAll(c);
-    this.isSorted = false;
-    return result;
-  }
-
-  public boolean addAll(int index, Collection<? extends T> c) {
-    boolean result = data.addAll(index, c);
-    this.isSorted = false;
-    return result;
-  }
-
-  public void singleSort(Comparator<T> comparator) {
-    if (!isSorted) {
-      Collections.sort(data, comparator);
-      isSorted = true;
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.util.List#add(int, java.lang.Object)
+     */
+    public void add(int index, T element) {
+	data.add(index, element);
+	this.isSorted = false;
     }
-  }
 
-  public void clear() {
-    data.clear();
-  }
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.util.List#add(java.lang.Object)
+     */
+    public boolean add(T e) {
+	boolean result = data.add(e);
+	this.isSorted = false;
+	return result;
+    }
 
-  public boolean contains(Object o) {
-    return data.contains(o);
-  }
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.util.List#addAll(java.util.Collection)
+     */
+    public boolean addAll(Collection<? extends T> c) {
+	boolean result = data.addAll(c);
+	this.isSorted = false;
+	return result;
+    }
 
-  public boolean containsAll(Collection<?> c) {
-    return data.containsAll(c);
-  }
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.util.List#addAll(int, java.util.Collection)
+     */
+    public boolean addAll(int index, Collection<? extends T> c) {
+	boolean result = data.addAll(index, c);
+	this.isSorted = false;
+	return result;
+    }
 
-  public boolean equals(Object o) {
-    return data.equals(o);
-  }
+    /**
+     * request a sort with given comparator. Is list is called twice with
+     * different comparators only the first will be applied unless new items
+     * were added in between.
+     * 
+     * @param comparator
+     *            a comparator
+     */
+    public void singleSort(Comparator<T> comparator) {
+	if (!isSorted) {
+	    Collections.sort(data, comparator);
+	    isSorted = true;
+	}
+    }
 
-  public T get(int index) {
-    return data.get(index);
-  }
+    public void clear() {
+	data.clear();
+    }
 
-  public int hashCode() {
-    return data.hashCode();
-  }
+    public boolean contains(Object o) {
+	return data.contains(o);
+    }
 
-  public int indexOf(Object o) {
-    return data.indexOf(o);
-  }
+    public boolean containsAll(Collection<?> c) {
+	return data.containsAll(c);
+    }
 
-  public boolean isEmpty() {
-    return data.isEmpty();
-  }
+    public boolean equals(Object o) {
+	return data.equals(o);
+    }
 
-  public Iterator<T> iterator() {
-    return data.iterator();
-  }
+    public T get(int index) {
+	return data.get(index);
+    }
 
-  public int lastIndexOf(Object o) {
-    return data.lastIndexOf(o);
-  }
+    public int hashCode() {
+	return data.hashCode();
+    }
 
-  public ListIterator<T> listIterator() {
-    return data.listIterator();
-  }
+    public int indexOf(Object o) {
+	return data.indexOf(o);
+    }
 
-  public ListIterator<T> listIterator(int index) {
-    return data.listIterator(index);
-  }
+    public boolean isEmpty() {
+	return data.isEmpty();
+    }
 
-  public T remove(int index) {
-    return data.remove(index);
-  }
+    public Iterator<T> iterator() {
+	return data.iterator();
+    }
 
-  public boolean remove(Object o) {
-    return data.remove(o);
-  }
+    public int lastIndexOf(Object o) {
+	return data.lastIndexOf(o);
+    }
 
-  public boolean removeAll(Collection<?> c) {
-    return data.removeAll(c);
-  }
+    public ListIterator<T> listIterator() {
+	return data.listIterator();
+    }
 
-  public boolean retainAll(Collection<?> c) {
-    return data.retainAll(c);
-  }
+    public ListIterator<T> listIterator(int index) {
+	return data.listIterator(index);
+    }
 
-  public T set(int index, T element) {
-    return data.set(index, element);
-  }
+    public T remove(int index) {
+	return data.remove(index);
+    }
 
-  public int size() {
-    return data.size();
-  }
+    public boolean remove(Object o) {
+	return data.remove(o);
+    }
 
-  public List<T> subList(int fromIndex, int toIndex) {
-    return data.subList(fromIndex, toIndex);
-  }
+    public boolean removeAll(Collection<?> c) {
+	return data.removeAll(c);
+    }
 
-  public Object[] toArray() {
-    return data.toArray();
-  }
+    public boolean retainAll(Collection<?> c) {
+	return data.retainAll(c);
+    }
 
-  @SuppressWarnings("hiding")
-  public <T> T[] toArray(T[] a) {
-    return data.toArray(a);
-  }
+    public T set(int index, T element) {
+	return data.set(index, element);
+    }
 
-  public String toString() {
-    return data.toString();
-  }
+    public int size() {
+	return data.size();
+    }
 
-  public void trimToSize() {
-    data.trimToSize();
-  }
+    public List<T> subList(int fromIndex, int toIndex) {
+	return data.subList(fromIndex, toIndex);
+    }
+
+    public Object[] toArray() {
+	return data.toArray();
+    }
+
+    @SuppressWarnings("hiding")
+    public <T> T[] toArray(T[] a) {
+	return data.toArray(a);
+    }
+
+    public String toString() {
+	return data.toString();
+    }
+
+    public void trimToSize() {
+	data.trimToSize();
+    }
 }

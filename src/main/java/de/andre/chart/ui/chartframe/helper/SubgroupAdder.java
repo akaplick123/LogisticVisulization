@@ -33,6 +33,13 @@ public class SubgroupAdder {
 	}
     }
     
+    public void clear() {
+	for (Entry<String, HashMap<LocalDateTime, Integer>> e1 : data.entrySet()) {
+	    e1.getValue().clear();
+	}
+	data.clear();
+    }
+    
     public List<LocalDateTime> allDates() {
 	HashSet<LocalDateTime> tmp = new HashSet<>();
 	for (Entry<String, HashMap<LocalDateTime, Integer>> e1 : data.entrySet()) {

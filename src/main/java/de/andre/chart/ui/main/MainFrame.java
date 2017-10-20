@@ -24,6 +24,7 @@ import de.andre.chart.data.LocalDateTimeLookUp;
 import de.andre.chart.ui.chartframe.OrdersByCompanyAndTimeChartFrame;
 import de.andre.chart.ui.chartframe.OrdersByTimeChartFrame;
 import de.andre.chart.ui.chartframe.OrdersFulfillmentByTimeChartFrame;
+import de.andre.chart.ui.chartframe.OrdersFulfillmentByTimeChartFrame2;
 import de.andre.chart.ui.main.actions.CreateInternalFrameAction;
 import de.andre.chart.ui.main.actions.LoadFileAction;
 import de.andre.chart.ui.main.actions.QuitAction;
@@ -88,9 +89,15 @@ public class MainFrame extends JFrame {
 	menu.add(menuItem);
 
 	menuItem = new JMenuItem("Order fulfillment over time");
-	menuItem.setMnemonic(KeyEvent.VK_C);
+//	menuItem.setMnemonic(KeyEvent.VK_F);
 	menuItem.addActionListener(new CreateInternalFrameAction(desktop,
 		() -> new OrdersFulfillmentByTimeChartFrame(desktop, datacenter, dateTimeLookup)));
+	menu.add(menuItem);
+
+	menuItem = new JMenuItem("Order fulfillment over time (2)");
+	menuItem.setMnemonic(KeyEvent.VK_F);
+	menuItem.addActionListener(new CreateInternalFrameAction(desktop,
+		() -> new OrdersFulfillmentByTimeChartFrame2(desktop, datacenter, dateTimeLookup)));
 	menu.add(menuItem);
 
 	menuBar.add(menu);
