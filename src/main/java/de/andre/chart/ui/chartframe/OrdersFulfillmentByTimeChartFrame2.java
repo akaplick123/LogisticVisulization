@@ -2,7 +2,6 @@ package de.andre.chart.ui.chartframe;
 
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
-import java.lang.reflect.InvocationTargetException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -98,10 +97,12 @@ public class OrdersFulfillmentByTimeChartFrame2 extends JInternalFrameBase {
     JLabel lCurrentTime = new JLabel("now");
     JButton bNext = new JButton("start");
     bNext.setActionCommand("start");
+    JButton bReset = new JButton("reset");
+
     StoppableThread thread = new StoppableThread(() -> {
-      DateTimeFormatter dtf = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+      DateTimeFormatter dtf = DateTimeFormatter.ofPattern("EE, dd.MM.yyyy HH:mm");
       incrementTimeAndUpdateChart();
-      lCurrentTime.setText(dtf.format(this.currentTime).replace('T', ' '));
+      lCurrentTime.setText("Time: " + dtf.format(this.currentTime));
 
       // check for end of thread
       int idx = this.timeGroupList.indexOf(this.currentTime);
@@ -122,8 +123,19 @@ public class OrdersFulfillmentByTimeChartFrame2 extends JInternalFrameBase {
       }
     });
 
+    bReset.addActionListener(e -> {
+      thread.stop();
+      itemStates.reset();
+      if (!this.timeGroupList.isEmpty()) {
+        this.currentTime = this.timeGroupList.get(0);
+        updateChart();
+        lCurrentTime.setText("now");
+      }
+    });
+
     pBottom.add(lCurrentTime);
     pBottom.add(bNext);
+    pBottom.add(bReset);
     add(pBottom, BorderLayout.SOUTH);
     addInternalFrameClosedListener(e -> {
       thread.stop();
@@ -137,9 +149,11 @@ public class OrdersFulfillmentByTimeChartFrame2 extends JInternalFrameBase {
 
     new Thread(() -> {
       bNext.setEnabled(false);
+      bReset.setEnabled(false);
       initializeChartContent();
       updateChart();
       bNext.setEnabled(true);
+      bReset.setEnabled(false);
     } , "firstDrawing").start();
   }
 
@@ -194,7 +208,7 @@ public class OrdersFulfillmentByTimeChartFrame2 extends JInternalFrameBase {
   }
 
   private void incrementTimeAndUpdateChart() {
-    log.debug("start incrementTimeAndUpdateChart at date: " + currentTime);
+    log.trace("start incrementTimeAndUpdateChart at date: " + currentTime);
     // process all events of currentTime and increment currentTime at the
     // end
     LocalDateTime timeToProcess = this.currentTime;
@@ -224,28 +238,21 @@ public class OrdersFulfillmentByTimeChartFrame2 extends JInternalFrameBase {
     }
 
     updateChart();
-    log.debug("finished incrementTimeAndUpdateChart at date: " + currentTime);
+    log.trace("finished incrementTimeAndUpdateChart at date: " + currentTime);
   }
 
   private void updateChart() {
-    try {
-      SwingUtilities.invokeAndWait(this::updateChartInternal);
-    } catch (InvocationTargetException e) {
-      e.printStackTrace();
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+    SwingUtilities.invokeLater(this::updateChartInternal);
   }
 
   private void updateChartInternal() {
-      log.debug("start updateChart at date: " + currentTime);
+      log.trace("start updateChart at date: " + currentTime);
       final SubgroupAdder barChartData = this.itemStates.getBarChartData();
 
       // draw chart
       dataset.setNotify(false);
       dataset.clear();
       List<LocalDateTime> dates = barChartData.allDates();
-      log.debug("start loop");
       for (LocalDateTime date : dates) {
         TimePeriod minute = toMinute(date);
         for (String state : stateOrder.getOrderedItems()) {
@@ -256,10 +263,9 @@ public class OrdersFulfillmentByTimeChartFrame2 extends JInternalFrameBase {
         }
       }
 
-      log.debug("end loop and notify");
       // todo: // renderer.setSeriesFillPaint(series, paint, notify);
       dataset.setNotify(true);
-      log.debug("finished updateChart at date: " + currentTime);
+      log.trace("finished updateChart at date: " + currentTime);
   }
 
   private void incrementCurrentTime() {
@@ -379,6 +385,18 @@ public class OrdersFulfillmentByTimeChartFrame2 extends JInternalFrameBase {
       }
     }
 
+    /**
+     * resets all states to STATE_FUTURE_ORDER
+     */
+    public void reset() {
+      for (int commkey: commkeysToTimeBins.keySet()) {
+        String oldState = getItemState(commkey);
+        if (!STATE_FUTURE_ORDER.equals(oldState)) {
+          updateItemStateInternal(commkey, oldState, STATE_FUTURE_ORDER);
+        }
+      }
+    }
+
     public void updateItemState(int commkey, String newState) {
       String oldState = getItemState(commkey);
       if (STATE_FUTURE_ORDER.equals(oldState)) {
@@ -441,20 +459,6 @@ public class OrdersFulfillmentByTimeChartFrame2 extends JInternalFrameBase {
     private static final long serialVersionUID = 1L;
 
     private static HashMap<LocalDateTime, Minute> minutes = new HashMap<>();
-
-//    private boolean pegExecuted = false;
-//
-//    public CachedMinute(int minute, int hour, int day, int month, int year) {
-//      super(minute, hour, day, month, year);
-//    }
-//
-//    @Override
-//    public void peg(Calendar calendar) {
-//      if (!pegExecuted) {
-//        super.peg(calendar);
-//        pegExecuted = true;
-//      }
-//    }
 
     public static Minute toMinute(LocalDateTime time) {
 	Minute result = minutes.get(time);

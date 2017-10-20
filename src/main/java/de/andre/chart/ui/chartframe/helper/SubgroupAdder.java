@@ -14,89 +14,89 @@ import lombok.Getter;
 import lombok.ToString;
 
 public class SubgroupAdder {
-    private final HashMap<String, HashMap<LocalDateTime, Integer>> data = new HashMap<>();
+  private final HashMap<String, HashMap<LocalDateTime, Integer>> data = new HashMap<>();
 
-    public void add(LocalDateTime time, String subgroup, int amount) {
-	HashMap<LocalDateTime, Integer> group = this.data.get(subgroup);
-	if (group == null) {
-	    group = new HashMap<>();
-	    group.put(time, amount);
-	    this.data.put(subgroup, group);
-	} else {
-	    // group is not null
-	    Integer oldValue = group.get(time);
-	    if (oldValue == null) {
-		group.put(time, amount);
-	    } else {
-		group.put(time, oldValue.intValue() + amount);
-	    }
-	}
+  public synchronized void add(LocalDateTime time, String subgroup, int amount) {
+    HashMap<LocalDateTime, Integer> group = this.data.get(subgroup);
+    if (group == null) {
+      group = new HashMap<>();
+      group.put(time, amount);
+      this.data.put(subgroup, group);
+    } else {
+      // group is not null
+      Integer oldValue = group.get(time);
+      if (oldValue == null) {
+        group.put(time, amount);
+      } else {
+        group.put(time, oldValue.intValue() + amount);
+      }
     }
-    
-    public void clear() {
-	for (Entry<String, HashMap<LocalDateTime, Integer>> e1 : data.entrySet()) {
-	    e1.getValue().clear();
-	}
-	data.clear();
-    }
-    
-    public List<LocalDateTime> allDates() {
-	HashSet<LocalDateTime> tmp = new HashSet<>();
-	for (Entry<String, HashMap<LocalDateTime, Integer>> e1 : data.entrySet()) {
-	    tmp.addAll(e1.getValue().keySet());
-	}
-	ArrayList<LocalDateTime> result = new ArrayList<>(tmp);
-	Collections.sort(result);
-	return result;
-    }
+  }
 
-    public int getValue(LocalDateTime time, String subgroup) {
-	HashMap<LocalDateTime, Integer> e1 = data.get(subgroup);
-	if (e1 == null) {
-	    return 0;
-	}
-	Integer e2 = e1.get(time);
-	if (e2 == null) {
-	    return 0;
-	}
-	return e2.intValue();
+  public synchronized void clear() {
+    for (Entry<String, HashMap<LocalDateTime, Integer>> e1 : data.entrySet()) {
+      e1.getValue().clear();
     }
+    data.clear();
+  }
 
-    public Collection<Tupel> getEntriesBySubgroup(String subgroup) {
-	ArrayList<Tupel> result = new ArrayList<>();
-	if (data.containsKey(subgroup)) {
-	    for (Entry<LocalDateTime, Integer> e2 : data.get(subgroup).entrySet()) {
-		result.add(new Tupel(e2.getKey(), e2.getValue()));
-	    }
-	}
-	return result;
+  public synchronized List<LocalDateTime> allDates() {
+    HashSet<LocalDateTime> tmp = new HashSet<>();
+    for (Entry<String, HashMap<LocalDateTime, Integer>> e1 : data.entrySet()) {
+      tmp.addAll(e1.getValue().keySet());
     }
+    ArrayList<LocalDateTime> result = new ArrayList<>(tmp);
+    Collections.sort(result);
+    return result;
+  }
 
-    public Collection<Tripel> getEntries() {
-	ArrayList<Tripel> result = new ArrayList<>();
-	for (Entry<String, HashMap<LocalDateTime, Integer>> e1 : data.entrySet()) {
-	    for (Entry<LocalDateTime, Integer> e2 : e1.getValue().entrySet()) {
-		result.add(new Tripel(e2.getKey(), e1.getKey(), e2.getValue()));
-	    }
-	}
-	return result;
+  public synchronized int getValue(LocalDateTime time, String subgroup) {
+    HashMap<LocalDateTime, Integer> e1 = data.get(subgroup);
+    if (e1 == null) {
+      return 0;
     }
-
-
-    @AllArgsConstructor
-    @Getter
-    @ToString
-    public static class Tupel {
-	private final LocalDateTime time;
-	private final int value;
+    Integer e2 = e1.get(time);
+    if (e2 == null) {
+      return 0;
     }
+    return e2.intValue();
+  }
 
-    @AllArgsConstructor
-    @Getter
-    @ToString
-    public static class Tripel {
-	private final LocalDateTime time;
-	private final String subgroup;
-	private final int value;
+  public synchronized Collection<Tupel> getEntriesBySubgroup(String subgroup) {
+    ArrayList<Tupel> result = new ArrayList<>();
+    if (data.containsKey(subgroup)) {
+      for (Entry<LocalDateTime, Integer> e2 : data.get(subgroup).entrySet()) {
+        result.add(new Tupel(e2.getKey(), e2.getValue()));
+      }
     }
+    return result;
+  }
+
+  public synchronized Collection<Tripel> getEntries() {
+    ArrayList<Tripel> result = new ArrayList<>();
+    for (Entry<String, HashMap<LocalDateTime, Integer>> e1 : data.entrySet()) {
+      for (Entry<LocalDateTime, Integer> e2 : e1.getValue().entrySet()) {
+        result.add(new Tripel(e2.getKey(), e1.getKey(), e2.getValue()));
+      }
+    }
+    return result;
+  }
+
+
+  @AllArgsConstructor
+  @Getter
+  @ToString
+  public static class Tupel {
+    private final LocalDateTime time;
+    private final int value;
+  }
+
+  @AllArgsConstructor
+  @Getter
+  @ToString
+  public static class Tripel {
+    private final LocalDateTime time;
+    private final String subgroup;
+    private final int value;
+  }
 }
