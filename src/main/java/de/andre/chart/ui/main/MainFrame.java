@@ -28,10 +28,8 @@ import de.andre.chart.ui.chartframe.OrdersFulfillmentByTimeChartFrame2;
 import de.andre.chart.ui.main.actions.CreateInternalFrameAction;
 import de.andre.chart.ui.main.actions.LoadFileAction;
 import de.andre.chart.ui.main.actions.QuitAction;
-import lombok.extern.log4j.Log4j;
 
 @Component
-@Log4j
 public class MainFrame extends JFrame {
     private static final long serialVersionUID = 1L;
     private JDesktopPane desktop;

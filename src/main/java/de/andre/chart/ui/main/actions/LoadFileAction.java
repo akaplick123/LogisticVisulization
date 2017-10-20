@@ -56,6 +56,7 @@ public class LoadFileAction implements ActionListener {
     FileFilter csvFileFilter = new FileNameExtensionFilter("CSV files", "csv");
     fc.addChoosableFileFilter(csvFileFilter);
     fc.setFileFilter(csvFileFilter);
+    fc.setCurrentDirectory(new File("."));
 
     int rc = fc.showOpenDialog(desktop);
     lastSelectedDirectory = fc.getCurrentDirectory();
