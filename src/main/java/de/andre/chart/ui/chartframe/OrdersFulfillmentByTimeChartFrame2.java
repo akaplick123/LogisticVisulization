@@ -1,7 +1,9 @@
 package de.andre.chart.ui.chartframe;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.FlowLayout;
+import java.awt.Paint;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -48,6 +50,11 @@ import de.andre.chart.ui.chartframe.helper.SubgroupAdder;
 import de.andre.chart.ui.chartframe.helper.jfreechart.BetterTimeTableXYDataset;
 import lombok.extern.log4j.Log4j;
 
+/**
+ * Animated chart of all items and there fulfillment state over time.
+ *  
+ * @author andre
+ */
 @Log4j
 public class OrdersFulfillmentByTimeChartFrame2 extends JInternalFrameBase {
   private static final String STATE_FUTURE_ORDER = "future";
@@ -56,6 +63,12 @@ public class OrdersFulfillmentByTimeChartFrame2 extends JInternalFrameBase {
   private static final String STATE_CANCELED = "canceled";
   private static final String STATE_PROCESSED = "processed";
 
+  private static final Color COLOR_STATE_FUTURE_ORDER = new Color(127, 127, 127); // dark grey 
+  private static final Color COLOR_STATE_ORDERED = new Color(0, 108, 217); // blue 
+  // private static final Color COLOR_STATE_EX_NALIE = new Color(0, 108, 217); // blue 
+  private static final Color COLOR_STATE_CANCELED = new Color(255, 0, 0); // red 
+  private static final Color COLOR_STATE_PROCESSED = new Color(0, 255, 64); // green 
+  
   private static final long serialVersionUID = 1L;
 
   /** all data */
@@ -263,9 +276,20 @@ public class OrdersFulfillmentByTimeChartFrame2 extends JInternalFrameBase {
         }
       }
 
-      // todo: // renderer.setSeriesFillPaint(series, paint, notify);
+      updateColor(STATE_FUTURE_ORDER, COLOR_STATE_FUTURE_ORDER);
+      updateColor(STATE_CANCELED, COLOR_STATE_CANCELED);
+      updateColor(STATE_ORDERED, COLOR_STATE_ORDERED);
+      updateColor(STATE_PROCESSED, COLOR_STATE_PROCESSED);
       dataset.setNotify(true);
       log.trace("finished updateChart at date: " + currentTime);
+  }
+
+  private void updateColor(String seriesKey, Color color) {
+    if (stateOrder.isIncluded(seriesKey)) {
+       Paint paint = color;
+       int seriesIndex = dataset.indexOf(seriesKey);
+       renderer.setSeriesPaint(seriesIndex, paint, false);
+    }
   }
 
   private void incrementCurrentTime() {
